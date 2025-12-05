@@ -92,35 +92,19 @@ Real-time progress
 
 
 
-Tech Stack
-Frontend
+## Tech Stack
 
-Next.js
+### Frontend
+- Next.js
+- Tailwind CSS
+- Map/Location APIs
 
+### Backend
+- Next.js API Routes
+- AWS Lambda or Azure Functions
+- DynamoDB / Azure Cosmos DB (optional)
 
-Tailwind CSS
-
-
-Map/Location APIs
-
-
-Backend
-
-Next.js API Routes
-
-
-AWS Lambda or Azure Functions
-
-
-DynamoDB / Azure Cosmos DB (optional)
-
-
-External APIs
-
-Government Railway API
-
-
-RapidAPI Railway endpoints
-
-
-Mapbox or Google Maps for location
+### External APIs
+- Government Railway API
+- RapidAPI Railway endpoints
+- Mapbox or Google Maps for location
