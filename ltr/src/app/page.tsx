@@ -8,6 +8,6 @@ export default function Home() {
         Your assistant for real-time local train updates, platform alerts &
         reroute guidance.
       </p>
-    <>
+    </main>
   );
 }
