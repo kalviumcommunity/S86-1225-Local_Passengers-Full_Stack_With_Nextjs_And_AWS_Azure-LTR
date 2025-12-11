@@ -118,3 +118,133 @@ Our MVP will include:
 * If delays occur in development, we will redistribute tasks within the team.
 
 ---
+
+**10. TypeScript & ESLint Configuration**
+
+### Overview
+
+To ensure code quality, consistency, and catch errors early in the development process, we have implemented a comprehensive TypeScript and ESLint configuration with Prettier for automatic code formatting and Husky with lint-staged for pre-commit hooks.
+
+### Why Strict TypeScript Configuration?
+
+Strict TypeScript mode significantly reduces runtime bugs by:
+
+- **Type Safety**: `strict: true` enforces strict null checks and ensures all types are explicitly defined
+- **Implicit Any Prevention**: `noImplicitAny: true` prevents variables from having the `any` type, requiring explicit type annotations
+- **Unused Code Detection**: `noUnusedLocals: true` and `noUnusedParameters: true` identify and remove dead code that could cause confusion or bloat
+- **Casing Consistency**: `forceConsistentCasingInFileNames: true` prevents import errors caused by incorrect file name casing on case-sensitive systems
+- **Skip Library Checks**: `skipLibCheck: true` speeds up compilation by skipping type checking of declaration files
+
+### TypeScript Configuration (`tsconfig.json`)
+
+The following strict compiler options have been enabled:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  }
+}
+```
+
+### ESLint Configuration (`.eslintrc.json`)
+
+ESLint rules enforce consistent code style and catch potential problems:
+
+```json
+{
+  "extends": ["next/core-web-vitals", "plugin:prettier/recommended"],
+  "rules": {
+    "no-console": "warn",
+    "semi": ["error", "always"],
+    "quotes": ["error", "double"]
+  }
+}
+```
+
+**Rules Explanation:**
+
+- `no-console`: Warns when `console.log` statements are used (helps keep production code clean)
+- `semi`: Requires semicolons at the end of statements (prevents potential issues with automatic semicolon insertion)
+- `quotes`: Enforces double quotes throughout the codebase (improves consistency)
+- `extends`: Includes Next.js recommended rules and Prettier integration to avoid style conflicts
+
+### Prettier Configuration (`.prettierrc`)
+
+Prettier automatically formats code consistently without debates:
+
+```json
+{
+  "singleQuote": false,
+  "semi": true,
+  "tabWidth": 2,
+  "trailingComma": "es5"
+}
+```
+
+**Options:**
+
+- `singleQuote: false`: Uses double quotes (aligns with ESLint rules)
+- `semi: true`: Adds semicolons automatically
+- `tabWidth: 2`: Uses 2 spaces for indentation
+- `trailingComma: "es5"`: Adds trailing commas in objects and arrays (valid ES5 syntax)
+
+### Pre-Commit Hooks with Husky & lint-staged
+
+We use Husky and lint-staged to automatically run linting and formatting before commits, ensuring no code quality issues slip through.
+
+**Setup:**
+
+1. Husky is initialized and manages git hooks
+2. The `.husky/pre-commit` hook runs lint-staged on staged files
+3. lint-staged configuration in `package.json`:
+
+```json
+{
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": ["eslint --fix", "prettier --write"]
+  }
+}
+```
+
+This configuration automatically:
+- Runs ESLint with `--fix` to auto-correct issues
+- Runs Prettier to format code
+- Only applies to staged TypeScript and JavaScript files
+- Prevents committing code that violates our standards
+
+### Installation & Setup
+
+All packages have been installed and configured:
+
+**Installed Packages:**
+- `prettier`: Code formatter
+- `eslint-plugin-prettier`: ESLint plugin for Prettier
+- `eslint-config-prettier`: ESLint config to disable conflicting rules
+- `husky`: Git hooks manager
+- `lint-staged`: Run linters on staged files
+
+### How to Use
+
+1. **Development**: Code as normal. ESLint and Prettier will highlight issues in your editor.
+2. **Committing**: When you run `git commit`, the pre-commit hook automatically:
+   - Formats your code with Prettier
+   - Fixes auto-fixable ESLint issues
+   - Prevents commit if there are remaining violations
+3. **Manual Check**: Run `npm run lint` to check for linting issues
+
+### Benefits for Team Consistency
+
+- **No Style Debates**: Prettier and ESLint remove subjective formatting decisions
+- **Early Error Detection**: Strict TypeScript catches bugs before runtime
+- **Clean Git History**: Only properly formatted code is committed
+- **Onboarding Ease**: New team members follow the same rules automatically
+- **Code Reviews**: Reviewers focus on logic, not style
+- **Prevents Bugs**: Catches common errors like unused variables and type issues
+
+---
