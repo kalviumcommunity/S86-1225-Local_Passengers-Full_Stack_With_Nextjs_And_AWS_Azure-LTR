@@ -152,27 +152,26 @@ The following strict compiler options have been enabled:
 }
 ```
 
-### ESLint Configuration (`.eslintrc.json`)
+### ESLint Configuration (`eslint.config.mjs`)
 
-ESLint rules enforce consistent code style and catch potential problems:
+Our project uses ESLint's flat config format (the modern approach). The configuration includes strict rules that enforce consistent code style and catch potential problems:
 
-```json
+```javascript
 {
-  "extends": ["next/core-web-vitals", "plugin:prettier/recommended"],
-  "rules": {
-    "no-console": "warn",
+  rules: {
+    "no-console": "error",
     "semi": ["error", "always"],
-    "quotes": ["error", "double"]
-  }
+    "quotes": ["error", "double"],
+  },
 }
 ```
 
 **Rules Explanation:**
 
-- `no-console`: Warns when `console.log` statements are used (helps keep production code clean)
-- `semi`: Requires semicolons at the end of statements (prevents potential issues with automatic semicolon insertion)
-- `quotes`: Enforces double quotes throughout the codebase (improves consistency)
-- `extends`: Includes Next.js recommended rules and Prettier integration to avoid style conflicts
+- `no-console`: **ERROR** - Blocks console.log statements from being committed (helps keep production code clean)
+- `semi`: **ERROR** - Requires semicolons at the end of statements (prevents potential issues with automatic semicolon insertion)
+- `quotes`: **ERROR** - Enforces double quotes throughout the codebase (improves consistency)
+- These rules integrate with Next.js core-web-vitals recommendations
 
 ### Prettier Configuration (`.prettierrc`)
 
