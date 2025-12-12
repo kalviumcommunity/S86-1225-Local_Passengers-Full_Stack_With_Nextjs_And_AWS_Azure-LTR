@@ -33,3 +33,7 @@ dist/
 # ltr subfolder
 ltr/node_modules/
 ltr/.next/
+
+# env
+.env
+.env*.local
