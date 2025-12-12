@@ -252,3 +252,39 @@ All packages have been installed and configured:
 - **Prevents Bugs**: Catches common errors like unused variables and type issues
 
 ---
+
+## Branching & PR Workflow
+
+Our team (LocalPassengers Team-3) follows a structured Git workflow to maintain clean collaboration and avoid merge conflicts.
+
+### Branch naming conventions
+We follow these patterns:
+- feature/<short-descriptive-name> — for new features (e.g. feature/train-status-api)c
+- fix/<short-description> — for bug fixes (e.g. fix/navbar-overflow)
+- chore/<task> — for config/maintenance tasks (e.g. chore/update-eslint)
+- docs/<update> — for documentation updates (e.g. docs/add-env-setup)
+
+### Pull Request (PR) guidelines
+- Every PR must use the `.github/pull_request_template.md` file.
+- PR titles follow the format: `feature: ...`, `fix: ...`, etc.
+- Each PR must include:
+  - Summary of the change
+  - How to test it
+  - Screenshots if UI is affected
+  - At least one teammate as reviewer
+
+### Review checklist
+Before approving a PR, we ensure:
+- The project builds (`npm run build` / `npm run dev`)
+- ESLint + Prettier checks pass (`npm run lint`)
+- No sensitive env variables are used in client components
+- Tests pass (if present)
+- No unnecessary or large files are included
+- Code follows our folder structure (`src/app`, `src/components`, etc.)
+
+### Branch protection (main)
+Our `main` branch is protected with:
+- Required pull request review (minimum 1 reviewer)
+- Required status checks (CI workflow: lint + build)
+- Branch must be up-to-date before merging
+- Direct commits to `main` are blocked
