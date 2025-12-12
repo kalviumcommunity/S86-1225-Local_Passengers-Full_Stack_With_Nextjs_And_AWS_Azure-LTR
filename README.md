@@ -288,3 +288,265 @@ Our `main` branch is protected with:
 - Required status checks (CI workflow: lint + build)
 - Branch must be up-to-date before merging
 - Direct commits to `main` are blocked
+
+---
+
+## Docker & Docker Compose Setup for Local Development
+
+### Overview
+
+This project uses Docker and Docker Compose to containerize the entire application stack — the Next.js app, PostgreSQL database, and Redis cache. This setup ensures a fully functional local environment that mirrors production and eliminates the "it works on my machine" problem. All team members can run the exact same containerized environment, ensuring consistency across development, testing, and production.
+
+### Architecture
+
+The Docker setup includes three main services:
+
+1. **Next.js App** (`nextjs_app`): The frontend and backend API, running on port 3000
+2. **PostgreSQL** (`postgres_db`): The relational database, running on port 5432
+3. **Redis** (`redis_cache`): The caching layer, running on port 6379
+
+All services communicate through a custom Docker bridge network (`localnet`) and use named volumes for data persistence.
+
+### Files
+
+#### **Dockerfile**
+
+The `Dockerfile` uses a multi-stage build approach for optimal image size:
+
+- **Builder Stage**: Installs dependencies, builds the Next.js app, and compiles TypeScript
+- **Production Stage**: Copies only production dependencies and built artifacts, reducing the final image size
+
+Key features:
+- Uses lightweight `node:20-alpine` base image
+- Multi-stage build reduces final image size by ~50%
+- Sets `NODE_ENV=production` for optimal Next.js performance
+- Exposes port 3000 for the application
+
+#### **docker-compose.yml**
+
+Defines three services with health checks, environment variables, volumes, and networking:
+
+**App Service:**
+- Builds from the Dockerfile
+- Runs on port 3000
+- Depends on both db and redis services
+- Environment variables for database and cache URLs
+- Health check ensures the container is fully ready
+
+**PostgreSQL Service:**
+- Uses official `postgres:15-alpine` image
+- Runs on port 5432
+- Persists data using the `db_data` named volume
+- Health check verifies database readiness
+- Default credentials: `postgres:postgres`
+
+**Redis Service:**
+- Uses official `redis:7-alpine` image
+- Runs on port 6379
+- Persists data using the `redis_data` named volume
+- Health check via `redis-cli ping`
+
+**Networking:**
+- All services connected through `localnet` bridge network
+- Enables service-to-service communication via service names (e.g., `db:5432`, `redis:6379`)
+
+**Volumes:**
+- `db_data`: Persists PostgreSQL data across container restarts
+- `redis_data`: Persists Redis data across container restarts
+
+### Getting Started
+
+#### Prerequisites
+
+Ensure you have installed:
+- [Docker](https://docs.docker.com/get-docker/) (v20.10+)
+- [Docker Compose](https://docs.docker.com/compose/install/) (v2.0+)
+
+Verify installation:
+```bash
+docker --version
+docker-compose --version
+```
+
+#### Running the Application
+
+1. **Start all services:**
+   ```bash
+   docker-compose up --build
+   ```
+   - `--build` flag rebuilds the Next.js image
+   - First run takes longer due to dependency installation and build process
+   - Remove `--build` on subsequent runs for faster startup
+
+2. **Verify all containers are running:**
+   ```bash
+   docker ps
+   ```
+   Output should show three running containers:
+   - `nextjs_app`
+   - `postgres_db`
+   - `redis_cache`
+
+3. **Access the application:**
+   - **Next.js App**: http://localhost:3000
+   - **PostgreSQL**: `localhost:5432` (connect with credentials postgres:postgres)
+   - **Redis CLI**: `docker-compose exec redis redis-cli`
+
+#### Stopping the Application
+
+```bash
+docker-compose down
+```
+- Stops and removes containers
+- Networks are destroyed
+- Volumes persist (data remains)
+
+To remove everything including volumes:
+```bash
+docker-compose down -v
+```
+
+### Common Commands
+
+#### View logs
+```bash
+# All services
+docker-compose logs
+
+# Specific service
+docker-compose logs app
+docker-compose logs db
+docker-compose logs redis
+
+# Follow logs in real-time
+docker-compose logs -f app
+```
+
+#### Execute commands inside containers
+```bash
+# Connect to Next.js container bash
+docker-compose exec app sh
+
+# Connect to PostgreSQL database
+docker-compose exec db psql -U postgres -d ltr_db
+
+# Redis CLI
+docker-compose exec redis redis-cli
+```
+
+#### Rebuild images
+```bash
+# Rebuild all
+docker-compose build
+
+# Rebuild specific service
+docker-compose build app
+```
+
+#### View container status
+```bash
+# Detailed container info
+docker-compose ps -a
+
+# View specific container logs with timestamps
+docker-compose logs --timestamps app
+```
+
+### Environment Variables
+
+The Docker Compose setup uses the following environment variables (defined in `docker-compose.yml`):
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `DATABASE_URL` | `postgres://postgres:postgres@db:5432/ltr_db` | Database connection string |
+| `REDIS_URL` | `redis://redis:6379` | Redis connection string |
+| `NODE_ENV` | `production` | Sets Next.js to production mode |
+| `POSTGRES_USER` | `postgres` | PostgreSQL username |
+| `POSTGRES_PASSWORD` | `postgres` | PostgreSQL password |
+| `POSTGRES_DB` | `ltr_db` | PostgreSQL database name |
+
+**Note:** These are development credentials. For production, use secure values stored in `.env.production` and secret management tools.
+
+### Health Checks
+
+All services include health checks that verify:
+- **App**: HTTP GET request to `http://localhost:3000`
+- **PostgreSQL**: `pg_isready` command verifies database availability
+- **Redis**: `redis-cli ping` returns PONG
+
+Docker Compose waits for health checks before marking containers as "healthy" and allows dependent services to start only when their dependencies are ready.
+
+### Development Workflow
+
+1. **Local changes**: Modify code in the `src/` directory
+2. **Rebuild**: Run `docker-compose up --build` to rebuild the app image
+3. **Test**: Access http://localhost:3000 and verify changes
+4. **Database changes**: Connect to the database:
+   ```bash
+   docker-compose exec db psql -U postgres -d ltr_db
+   ```
+
+### Troubleshooting
+
+#### Port conflicts
+If ports 3000, 5432, or 6379 are already in use:
+```bash
+# Find what's using the port (example: port 3000)
+lsof -i :3000
+
+# Modify docker-compose.yml to use different ports
+# Change "3000:3000" to "3001:3000" (first number is host port)
+```
+
+#### Container fails to start
+```bash
+# Check logs for errors
+docker-compose logs app
+
+# Rebuild without cache
+docker-compose build --no-cache app
+
+# Remove all containers and try again
+docker-compose down -v
+docker-compose up --build
+```
+
+#### Permission errors
+If you encounter permission errors on Windows PowerShell:
+```powershell
+# Run PowerShell as Administrator
+docker-compose up --build
+```
+
+#### Slow build process
+- First build takes 2-3 minutes due to dependency installation
+- Subsequent builds are faster if no dependencies changed
+- Use `.dockerignore` to exclude unnecessary files
+
+#### Database connection errors
+```bash
+# Verify database is healthy
+docker-compose exec db pg_isready -U postgres
+
+# Check environment variables in app container
+docker-compose exec app env | grep DATABASE_URL
+```
+
+### Build & Image Size
+
+The multi-stage Dockerfile optimizes image size:
+- **Builder stage**: ~500MB (includes build tools)
+- **Production stage**: ~150MB (only runtime dependencies)
+
+View image sizes:
+```bash
+docker images | grep nextjs_app
+```
+
+### Next Steps
+
+1. Set up the PostgreSQL schema (see `PostgreSQL Schema Design` section)
+2. Configure environment variables in `.env.local` for secrets
+3. Implement database migrations
+4. Set up CI/CD pipelines for automated Docker builds
+5. Deploy to cloud platforms (AWS, Azure) using Docker images
