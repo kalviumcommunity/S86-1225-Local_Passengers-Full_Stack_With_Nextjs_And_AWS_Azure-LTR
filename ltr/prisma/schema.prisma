@@ -1,0 +1,248 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - represents registered users in the system
+model User {
+  id              Int       @id @default(autoincrement())
+  email           String    @unique
+  name            String
+  phone           String?
+  profilePicture  String?
+  role            UserRole  @default(USER)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  teams           Team[]
+  teamMembers     TeamMember[]
+  projects        Project[]
+  tasks           Task[]
+  comments        Comment[]
+  notifications   Notification[]
+
+  @@index([email])
+  @@index([role])
+}
+
+enum UserRole {
+  ADMIN
+  PROJECT_MANAGER
+  TEAM_LEAD
+  USER
+}
+
+// Team model - represents a group of users working together
+model Team {
+  id              Int       @id @default(autoincrement())
+  name            String
+  description     String?
+  createdBy       Int
+  creator         User      @relation(fields: [createdBy], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  members         TeamMember[]
+  projects        Project[]
+
+  @@index([createdBy])
+}
+
+// TeamMember join table - many-to-many relationship between User and Team
+model TeamMember {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  teamId          Int
+  role            TeamMemberRole @default(MEMBER)
+  joinedAt        DateTime  @default(now())
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team            Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@index([userId])
+  @@index([teamId])
+}
+
+enum TeamMemberRole {
+  LEAD
+  MEMBER
+  VIEWER
+}
+
+// Project model - represents a passenger transportation project
+model Project {
+  id              Int       @id @default(autoincrement())
+  name            String
+  description     String?
+  status          ProjectStatus @default(PLANNING)
+  startDate       DateTime?
+  endDate         DateTime?
+  budget          Float?
+  location        String?
+  createdBy       Int
+  teamId          Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  creator         User      @relation(fields: [createdBy], references: [id])
+  team            Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  tasks           Task[]
+  tags            ProjectTag[]
+
+  @@index([createdBy])
+  @@index([teamId])
+  @@index([status])
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+// Task model - represents individual tasks within a project
+model Task {
+  id              Int       @id @default(autoincrement())
+  title           String
+  description     String?
+  status          TaskStatus @default(TODO)
+  priority        Priority  @default(MEDIUM)
+  projectId       Int
+  assignedTo      Int?
+  dueDate         DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee        User?     @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+  comments        Comment[]
+  subtasks        Subtask[]
+  tags            TaskTag[]
+
+  @@index([projectId])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([priority])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+  BLOCKED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Subtask model - represents subtasks within a task
+model Subtask {
+  id              Int       @id @default(autoincrement())
+  title           String
+  completed       Boolean   @default(false)
+  taskId          Int
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  task            Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+// Comment model - represents comments on tasks
+model Comment {
+  id              Int       @id @default(autoincrement())
+  content         String
+  taskId          Int
+  authorId        Int
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  task            Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author          User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([authorId])
+}
+
+// Tag model - represents tags for organization and filtering
+model Tag {
+  id              Int       @id @default(autoincrement())
+  name            String    @unique
+  color           String?   @default("#808080")
+  createdAt       DateTime  @default(now())
+
+  projects        ProjectTag[]
+  tasks           TaskTag[]
+
+  @@index([name])
+}
+
+// ProjectTag join table - many-to-many relationship between Project and Tag
+model ProjectTag {
+  id              Int       @id @default(autoincrement())
+  projectId       Int
+  tagId           Int
+
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tag             Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, tagId])
+  @@index([projectId])
+  @@index([tagId])
+}
+
+// TaskTag join table - many-to-many relationship between Task and Tag
+model TaskTag {
+  id              Int       @id @default(autoincrement())
+  taskId          Int
+  tagId           Int
+
+  task            Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag             Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, tagId])
+  @@index([taskId])
+  @@index([tagId])
+}
+
+// Notification model - represents user notifications
+model Notification {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  message         String
+  type            NotificationType
+  relatedTaskId   Int?
+  read            Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_UPDATED
+  COMMENT_ADDED
+  PROJECT_UPDATED
+  TEAM_INVITED
+}
