@@ -14,7 +14,7 @@
     "prisma:seed": "node prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.3.1",
+    "@prisma/client": "^5.10.2",
     "next": "16.0.8",
     "react": "19.2.1",
     "react-dom": "19.2.1"
@@ -32,11 +32,14 @@
     "husky": "^8.0.0",
     "lint-staged": "^16.2.7",
     "prettier": "^3.7.4",
-    "prisma": "^6.3.1",
+    "prisma": "^5.10.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx}": ["eslint --fix", "prettier --write"]
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   }
 }
