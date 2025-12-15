@@ -1,0 +1,6 @@
+{
+  "env": {
+    "name": "0_init",
+    "schema": "schema.prisma"
+  }
+}
