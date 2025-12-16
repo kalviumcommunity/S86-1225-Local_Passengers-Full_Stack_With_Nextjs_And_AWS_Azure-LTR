@@ -1,6 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import {
+  sendSuccess,
+  sendValidationError,
+  sendConflictError,
+  sendError,
+} from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 /**
  * POST /api/auth/register
@@ -14,10 +21,7 @@ export async function POST(req: NextRequest) {
 
     // Validate input
     if (!email || !password) {
-      return NextResponse.json(
-        { error: "Email and password are required" },
-        { status: 400 }
-      );
+      return sendValidationError("Email and password are required");
     }
 
     // Check if user already exists
@@ -26,10 +30,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: "User already exists" },
-        { status: 409 }
-      );
+      return sendConflictError("User with this email already exists");
     }
 
     // Hash password
@@ -50,16 +51,15 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(
-      { message: "User registered successfully", user },
-      { status: 201 }
-    );
+    return sendSuccess(user, "User registered successfully", 201);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("Registration error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+    return sendError(
+      "Failed to register user",
+      ERROR_CODES.USER_CREATION_FAILED,
+      500,
+      error
     );
   }
 }

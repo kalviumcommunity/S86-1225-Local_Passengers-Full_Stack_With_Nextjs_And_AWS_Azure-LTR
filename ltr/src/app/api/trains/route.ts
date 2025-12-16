@@ -1,4 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { sendSuccess, sendError } from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 /**
  * GET /api/trains
@@ -73,7 +75,7 @@ export async function GET(req: NextRequest) {
     const endIndex = startIndex + limit;
     const paginatedTrains = mockTrains.slice(startIndex, endIndex);
 
-    return NextResponse.json(
+    return sendSuccess(
       {
         trains: paginatedTrains,
         pagination: {
@@ -83,14 +85,17 @@ export async function GET(req: NextRequest) {
           totalPages: Math.ceil(mockTrains.length / limit),
         },
       },
-      { status: 200 }
+      "Trains fetched successfully",
+      200
     );
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("Get trains error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+    return sendError(
+      "Failed to fetch trains",
+      ERROR_CODES.TRAIN_FETCH_FAILED,
+      500,
+      error
     );
   }
 }
