@@ -14,6 +14,7 @@ datasource db {
 model User {
   id              Int       @id @default(autoincrement())
   email           String    @unique
+  password        String    @default("")
   name            String
   phone           String?
   profilePicture  String?
@@ -28,6 +29,7 @@ model User {
   tasks           Task[]
   comments        Comment[]
   notifications   Notification[]
+  alerts          Alert[]
 
   @@index([email])
   @@index([role])
@@ -248,4 +250,21 @@ enum NotificationType {
   COMMENT_ADDED
   PROJECT_UPDATED
   TEAM_INVITED
+}
+
+// Alert model - represents train alerts saved by users
+model Alert {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainId     String
+  trainName   String
+  source      String
+  destination String
+  alertType   String    @default("all")
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([trainId])
+  @@index([createdAt])
 }

@@ -579,6 +579,551 @@ For more troubleshooting help, see [MIGRATIONS_AND_SEEDING.md](./MIGRATIONS_AND_
 
 ---
 
+## API Route Structure and Naming Convention
+
+### Overview
+
+Our **LocalPassengers** API follows RESTful design principles with file-based routing in Next.js App Router. All API endpoints are organized under the `/api/` directory with predictable, resource-based naming conventions that make the backend self-documenting and easy to integrate.
+
+### Why REST and Consistent Naming Matter
+
+Following REST principles ensures:
+- **Predictable endpoints**: Developers can guess endpoint URLs without documentation
+- **HTTP verb semantics**: Each verb (GET, POST, PUT, DELETE) has a clear, single responsibility
+- **Reduced integration errors**: Consistent patterns mean fewer bugs during frontend/backend integration
+- **Maintainability**: New team members can quickly understand the API structure
+
+### File-Based Routing Structure
+
+In Next.js 14 App Router, each `route.ts` file under `app/api/` automatically becomes an API endpoint:
+
+```
+src/app/api/
+├── trains/
+│   ├── route.ts              # GET /api/trains, POST /api/trains
+│   └── [id]/
+│       └── route.ts          # GET /api/trains/:id, PUT /api/trains/:id, DELETE /api/trains/:id
+├── stations/
+│   ├── route.ts              # GET /api/stations, POST /api/stations
+│   └── [id]/
+│       └── route.ts          # GET /api/stations/:id, PUT /api/stations/:id, DELETE /api/stations/:id
+├── routes/
+│   └── route.ts              # GET /api/routes, POST /api/routes
+├── search/
+│   └── route.ts              # GET /api/search (train search between stations)
+├── delays/
+│   ├── route.ts              # GET /api/delays, POST /api/delays
+│   └── [id]/
+│       └── route.ts          # GET /api/delays/:id, PUT /api/delays/:id, DELETE /api/delays/:id
+├── cancellations/
+│   └── route.ts              # GET /api/cancellations, POST /api/cancellations
+├── reroutes/
+│   └── route.ts              # GET /api/reroutes, POST /api/reroutes
+├── saved-trains/
+│   └── route.ts              # GET /api/saved-trains, POST /api/saved-trains, DELETE /api/saved-trains
+├── alerts/
+│   └── route.ts              # GET /api/alerts, POST /api/alerts, PATCH /api/alerts
+└── users/
+    ├── route.ts              # GET /api/users, POST /api/users
+    └── [id]/
+        └── route.ts          # GET /api/users/:id, PUT /api/users/:id, DELETE /api/users/:id
+```
+
+---
+
+## Domain-Specific API Endpoints
+
+Our API is designed specifically for the **Local Train Passengers** domain. Below is the complete hierarchy:
+
+### 1. Trains Management (`/api/trains`)
+
+**Resource**: Train records (train number, name, type, operating days)
+
+| HTTP Method | Endpoint | Purpose | Query Params |
+|------------|----------|---------|-------------|
+| `GET` | `/api/trains` | List all trains with pagination | `page`, `limit`, `trainNumber`, `trainType`, `search`, `isActive` |
+| `POST` | `/api/trains` | Create a new train | - |
+| `GET` | `/api/trains/:id` | Get specific train details with routes, delays, cancellations | - |
+| `PUT` | `/api/trains/:id` | Update train information | - |
+| `DELETE` | `/api/trains/:id` | Deactivate a train (soft delete) | - |
+
+**Sample Request**:
+```bash
+# Get all EXPRESS trains
+curl -X GET "http://localhost:3000/api/trains?trainType=EXPRESS&page=1&limit=10"
+
+# Create a new train
+curl -X POST http://localhost:3000/api/trains \
+  -H "Content-Type: application/json" \
+  -d '{
+    "trainNumber": "12345",
+    "trainName": "Mumbai Express",
+    "trainType": "EXPRESS",
+    "operatingDays": ["MON", "TUE", "WED", "THU", "FRI"],
+    "isActive": true
+  }'
+```
+
+**Sample Response**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "trainNumber": "12345",
+      "trainName": "Mumbai Express",
+      "trainType": "EXPRESS",
+      "operatingDays": ["MON", "TUE", "WED", "THU", "FRI"],
+      "isActive": true,
+      "createdAt": "2025-12-16T10:00:00Z",
+      "_count": {
+        "routes": 3,
+        "delays": 2
+      }
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 50,
+    "pages": 5
+  }
+}
+```
+
+---
+
+### 2. Stations Management (`/api/stations`)
+
+**Resource**: Railway station information (code, name, city, facilities)
+
+| HTTP Method | Endpoint | Purpose | Query Params |
+|------------|----------|---------|-------------|
+| `GET` | `/api/stations` | List all stations with pagination | `page`, `limit`, `code`, `city`, `search` |
+| `POST` | `/api/stations` | Create a new station | - |
+| `GET` | `/api/stations/:id` | Get specific station with all routes | - |
+| `PUT` | `/api/stations/:id` | Update station details | - |
+| `DELETE` | `/api/stations/:id` | Delete a station | - |
+
+**Sample Request**:
+```bash
+# Search stations in Mumbai
+curl -X GET "http://localhost:3000/api/stations?city=Mumbai&page=1&limit=10"
+
+# Create a new station
+curl -X POST http://localhost:3000/api/stations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "CST",
+    "name": "Chhatrapati Shivaji Terminus",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "latitude": 18.9398,
+    "longitude": 72.8355,
+    "facilities": ["parking", "restroom", "food", "wifi"]
+  }'
+```
+
+---
+
+### 3. Train Routes (`/api/routes`)
+
+**Resource**: Train route information (origin, destination, timings, fare)
+
+| HTTP Method | Endpoint | Purpose | Query Params |
+|------------|----------|---------|-------------|
+| `GET` | `/api/routes` | List all routes with pagination | `page`, `limit`, `trainId`, `originStationId`, `destinationStationId` |
+| `POST` | `/api/routes` | Create a new route for a train | - |
+
+**Sample Request**:
+```bash
+# Get routes for train ID 1
+curl -X GET "http://localhost:3000/api/routes?trainId=1"
+
+# Create a new route
+curl -X POST http://localhost:3000/api/routes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "trainId": 1,
+    "originStationId": 1,
+    "destinationStationId": 2,
+    "departureTime": "08:30",
+    "arrivalTime": "10:45",
+    "duration": 135,
+    "distance": 45.5,
+    "fare": 25.00
+  }'
+```
+
+---
+
+### 4. Train Search (`/api/search`)
+
+**Resource**: Search trains between two stations with live delay information
+
+| HTTP Method | Endpoint | Purpose | Query Params |
+|------------|----------|---------|-------------|
+| `GET` | `/api/search` | Search trains between origin and destination | `origin` (required), `destination` (required), `date` (optional), `trainType` (optional) |
+
+**Sample Request**:
+```bash
+# Search trains from CST to Thane
+curl -X GET "http://localhost:3000/api/search?origin=CST&destination=Thane"
+
+# Search with date filter
+curl -X GET "http://localhost:3000/api/search?origin=Mumbai&destination=Pune&date=2025-12-20&trainType=EXPRESS"
+```
+
+**Sample Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "origin": {
+      "id": 1,
+      "code": "CST",
+      "name": "Chhatrapati Shivaji Terminus",
+      "city": "Mumbai"
+    },
+    "destination": {
+      "id": 2,
+      "code": "THN",
+      "name": "Thane",
+      "city": "Thane"
+    },
+    "searchDate": "2025-12-16",
+    "routes": [
+      {
+        "id": 1,
+        "departureTime": "08:30",
+        "arrivalTime": "09:15",
+        "duration": 45,
+        "distance": 30,
+        "fare": 15.00,
+        "train": {
+          "trainNumber": "12345",
+          "trainName": "Mumbai Local",
+          "trainType": "LOCAL"
+        },
+        "delay": {
+          "delayMinutes": 10,
+          "reason": "Signal failure",
+          "status": "DELAYED"
+        }
+      }
+    ],
+    "totalResults": 5
+  }
+}
+```
+
+---
+
+### 5. Delays Management (`/api/delays`)
+
+**Resource**: Train delay records with reasons and updated timings
+
+| HTTP Method | Endpoint | Purpose | Query Params |
+|------------|----------|---------|-------------|
+| `GET` | `/api/delays` | List all delays with pagination | `page`, `limit`, `trainId`, `status`, `date` |
+| `POST` | `/api/delays` | Create a new delay record | - |
+| `GET` | `/api/delays/:id` | Get specific delay details | - |
+| `PUT` | `/api/delays/:id` | Update delay information | - |
+| `DELETE` | `/api/delays/:id` | Delete a delay record | - |
+
+**Sample Request**:
+```bash
+# Get today's delays
+curl -X GET "http://localhost:3000/api/delays?date=2025-12-16"
+
+# Report a new delay
+curl -X POST http://localhost:3000/api/delays \
+  -H "Content-Type: application/json" \
+  -d '{
+    "trainId": 1,
+    "delayMinutes": 15,
+    "reason": "Signal failure at Dadar",
+    "expectedArrival": "09:30",
+    "status": "DELAYED"
+  }'
+```
+
+---
+
+### 6. Cancellations (`/api/cancellations`)
+
+**Resource**: Train cancellation records
+
+| HTTP Method | Endpoint | Purpose | Query Params |
+|------------|----------|---------|-------------|
+| `GET` | `/api/cancellations` | List all cancellations | `page`, `limit`, `trainId`, `date` |
+| `POST` | `/api/cancellations` | Create a cancellation record | - |
+
+**Sample Request**:
+```bash
+# Get cancellations for train ID 1
+curl -X GET "http://localhost:3000/api/cancellations?trainId=1"
+
+# Report a cancellation
+curl -X POST http://localhost:3000/api/cancellations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "trainId": 1,
+    "date": "2025-12-20T00:00:00Z",
+    "reason": "Track maintenance",
+    "isFullDay": true,
+    "affectedStations": []
+  }'
+```
+
+---
+
+### 7. Reroute Suggestions (`/api/reroutes`)
+
+**Resource**: Alternative route suggestions when trains are delayed
+
+| HTTP Method | Endpoint | Purpose | Query Params |
+|------------|----------|---------|-------------|
+| `GET` | `/api/reroutes` | List reroute suggestions | `page`, `limit`, `originalRouteId`, `isActive` |
+| `POST` | `/api/reroutes` | Create a reroute suggestion | - |
+
+**Sample Request**:
+```bash
+# Get active reroute suggestions
+curl -X GET "http://localhost:3000/api/reroutes?isActive=true"
+
+# Create a reroute suggestion
+curl -X POST http://localhost:3000/api/reroutes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "originalRouteId": 1,
+    "alternateTrainNumber": "12346",
+    "reason": "Original train delayed by 30 minutes",
+    "timeSaved": 15,
+    "additionalCost": 0,
+    "suggestion": "Take train 12346 from Platform 2. Arrives 15 minutes earlier."
+  }'
+```
+
+---
+
+### 8. Saved Trains (`/api/saved-trains`)
+
+**Resource**: User's frequently used trains with notification preferences
+
+| HTTP Method | Endpoint | Purpose | Query Params |
+|------------|----------|---------|-------------|
+| `GET` | `/api/saved-trains` | Get user's saved trains | `userId` (required), `page`, `limit` |
+| `POST` | `/api/saved-trains` | Save a train for a user | - |
+| `DELETE` | `/api/saved-trains` | Remove a saved train | - |
+
+**Sample Request**:
+```bash
+# Get saved trains for user ID 1
+curl -X GET "http://localhost:3000/api/saved-trains?userId=1"
+
+# Save a train
+curl -X POST http://localhost:3000/api/saved-trains \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 1,
+    "trainId": 1,
+    "nickname": "My morning train",
+    "notifyOnDelay": true,
+    "notifyOnPlatformChange": true
+  }'
+
+# Remove a saved train
+curl -X DELETE http://localhost:3000/api/saved-trains \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 1,
+    "trainId": 1
+  }'
+```
+
+---
+
+### 9. Alerts & Notifications (`/api/alerts`)
+
+**Resource**: User notifications for delays, cancellations, platform changes
+
+| HTTP Method | Endpoint | Purpose | Query Params |
+|------------|----------|---------|-------------|
+| `GET` | `/api/alerts` | Get user's alerts | `userId` (required), `page`, `limit`, `isRead`, `type` |
+| `POST` | `/api/alerts` | Create a new alert | - |
+| `PATCH` | `/api/alerts` | Mark alerts as read | - |
+
+**Sample Request**:
+```bash
+# Get unread alerts for user ID 1
+curl -X GET "http://localhost:3000/api/alerts?userId=1&isRead=false"
+
+# Mark specific alerts as read
+curl -X PATCH http://localhost:3000/api/alerts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 1,
+    "alertIds": [1, 2, 3]
+  }'
+
+# Mark all alerts as read
+curl -X PATCH http://localhost:3000/api/alerts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": 1,
+    "markAllAsRead": true
+  }'
+```
+
+---
+
+### 10. Users Management (`/api/users`)
+
+**Resource**: Commuter/admin user accounts
+
+| HTTP Method | Endpoint | Purpose | Query Params |
+|------------|----------|---------|-------------|
+| `GET` | `/api/users` | List all users | `page`, `limit`, `role` |
+| `POST` | `/api/users` | Create a new user | - |
+| `GET` | `/api/users/:id` | Get specific user | - |
+| `PUT` | `/api/users/:id` | Update user details | - |
+| `DELETE` | `/api/users/:id` | Delete a user | - |
+
+---
+
+## API Design Principles & Best Practices
+
+### 1. RESTful Resource Naming
+- ✅ **Use plural nouns**: `/api/trains`, `/api/stations` (not `/api/train` or `/api/getTrains`)
+- ✅ **Use nouns, not verbs**: `/api/users` (not `/api/getUsers` or `/api/createUser`)
+- ✅ **Hierarchical relationships**: `/api/trains/:id/routes` (if needed)
+- ✅ **Kebab-case for multi-word resources**: `/api/saved-trains`, `/api/platform-changes`
+
+### 2. HTTP Method Semantics
+- **GET**: Retrieve data (read-only, idempotent, no side effects)
+- **POST**: Create new resources
+- **PUT/PATCH**: Update existing resources
+- **DELETE**: Remove resources (soft delete in our case)
+
+### 3. Pagination & Filtering
+All list endpoints support:
+- `page` (default: 1)
+- `limit` (default: 10, max: 100)
+- Resource-specific filters (e.g., `trainType`, `city`, `status`)
+
+**Example**:
+```bash
+curl -X GET "http://localhost:3000/api/trains?page=2&limit=20&trainType=EXPRESS"
+```
+
+### 4. Error Handling & Status Codes
+| Status Code | Meaning | Usage |
+|------------|---------|-------|
+| `200 OK` | Success | GET requests |
+| `201 Created` | Resource created | POST requests |
+| `400 Bad Request` | Invalid input | Missing required fields, validation errors |
+| `404 Not Found` | Resource doesn't exist | GET/PUT/DELETE on non-existent ID |
+| `409 Conflict` | Resource already exists | Duplicate train number, station code |
+| `500 Internal Server Error` | Server error | Unexpected errors |
+
+**Error Response Format**:
+```json
+{
+  "success": false,
+  "error": "Train not found",
+  "message": "No train found with ID 999"
+}
+```
+
+### 5. Consistent Response Structure
+All successful responses follow this format:
+```json
+{
+  "success": true,
+  "data": { ... },
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 50,
+    "pages": 5
+  }
+}
+```
+
+---
+
+## Testing the API
+
+We provide comprehensive test commands in [API_TESTING_GUIDE.md](./ltr/API_TESTING_GUIDE.md).
+
+**Quick test**:
+```bash
+# Health check
+curl -X GET "http://localhost:3000/api/stations?limit=1"
+
+# Search trains
+curl -X GET "http://localhost:3000/api/search?origin=Mumbai&destination=Pune"
+```
+
+---
+
+## Database Schema Design
+
+The new domain-specific Prisma schema is available in [ltr/prisma/schema-trains.prisma](./ltr/prisma/schema-trains.prisma).
+
+**Key Models**:
+- `Train` - Train records (number, name, type)
+- `Station` - Railway stations
+- `TrainRoute` - Routes between stations
+- `StopPoint` - Intermediate stops on a route
+- `Delay` - Delay records
+- `Cancellation` - Cancellation records
+- `Reroute` - Alternative route suggestions
+- `SavedTrain` - User's saved trains
+- `Alert` - User notifications
+- `User` - Commuter accounts
+
+---
+
+## Reflection: Why This Design Matters
+
+### Consistency & Predictability
+By following strict RESTful conventions, our API becomes **self-documenting**. A developer who sees `/api/trains` can immediately guess:
+- `GET /api/trains` - list trains
+- `POST /api/trains` - create train
+- `GET /api/trains/:id` - get specific train
+- `PUT /api/trains/:id` - update train
+- `DELETE /api/trains/:id` - delete train
+
+This predictability reduces integration errors and onboarding time.
+
+### Error Prevention Through Design
+Our API design prevents common mistakes:
+- Required fields validated upfront (400 errors)
+- Duplicate resources rejected (409 errors)
+- Foreign key relationships enforced (404 errors)
+- Pagination limits prevent overload
+
+### Scalability & Maintainability
+- Each endpoint has a single, clear responsibility
+- Adding new resources follows the same pattern
+- Filters and pagination keep responses fast
+- Soft deletes preserve data integrity
+
+### Domain-Driven Design
+Our endpoints reflect the **actual problem domain** of local train passengers:
+- Search trains between stations
+- Track delays and cancellations
+- Save frequently used trains
+- Receive alerts for disruptions
+- Get reroute suggestions
+
+This alignment between domain concepts and API structure makes the system intuitive for both developers and end-users.
+
+---
+
 **Project**: Local Train Passengers Management System  
 **Author**: Kalvium Student  
-**Last Updated**: December 15, 2025
+**Last Updated**: December 16, 2025
