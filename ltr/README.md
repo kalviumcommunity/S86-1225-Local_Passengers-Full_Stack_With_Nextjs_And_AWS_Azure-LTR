@@ -277,7 +277,75 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-## 🛠️ Troubleshooting
+## � Database Optimization & Transactions (Assignment 2.16)
+
+### Indexes Added for Query Performance
+
+Strategic indexes added to optimize frequently queried fields:
+
+- **User**: `email` (unique lookups), `role` (filtering), `createdAt` (sorting)
+- **Notification**: `userId`, `read` (combined for unread notifications), `createdAt` (recent queries)
+- **Project, Task, Team**: Existing indexes on foreign keys (`createdBy`, `teamId`, `status`, `priority`)
+
+**Migration Command:**
+```bash
+npx prisma migrate dev --name add_performance_indexes
+```
+
+### Transactions with Rollback
+
+Implemented in `/src/app/api/transactions/route.ts`:
+
+**Scenario**: Creating a project with team and initial setup
+- All operations (team, project, task creation) execute atomically
+- If any operation fails, Prisma automatically rolls back all changes
+- Maintains data consistency and prevents partial writes
+
+**Endpoints:**
+```bash
+# Execute successful transaction
+POST http://localhost:3000/api/transactions
+Body: {
+  "projectName": "New Project",
+  "teamName": "Development Team",
+  "userIds": [1, 2, 3]
+}
+
+# Demo rollback behavior
+GET http://localhost:3000/api/transactions/demo?mode=rollback
+```
+
+### Query Optimization
+
+Implemented in `/src/app/api/query-optimization/route.ts`:
+
+**Best Practices Applied:**
+- ✅ **Field Selection**: Only select necessary fields (avoid over-fetching)
+- ✅ **Pagination**: Use `skip/take` for scalable data retrieval
+- ✅ **Indexed Queries**: Filter by indexed fields (`status`, `read`, `createdAt`)
+- ✅ **Batch Operations**: Use `createMany()` for bulk inserts
+
+**Endpoints:**
+```bash
+# Optimized queries with field selection
+GET http://localhost:3000/api/query-optimization?mode=optimized&page=1
+
+# Compare with inefficient approach (N+1 queries, over-fetching)
+GET http://localhost:3000/api/query-optimization?mode=inefficient
+
+# Batch create operations
+POST http://localhost:3000/api/query-optimization/batch
+Body: { "tags": ["Frontend", "Backend", "Database"] }
+```
+
+### Anti-patterns Avoided
+
+- ❌ N+1 queries: Instead of fetching all relations, we fetch counts and batch
+- ❌ Over-fetching: Use `select` to get only needed fields
+- ❌ Missing indexes: Added composite and single-column indexes for common queries
+- ❌ Unbounded queries: All queries include pagination with `take/skip`
+
+## �🛠️ Troubleshooting
 
 ### Database Connection Issues
 

@@ -31,6 +31,7 @@ model User {
 
   @@index([email])
   @@index([role])
+  @@index([createdAt])
 }
 
 enum UserRole {
@@ -237,6 +238,8 @@ model Notification {
 
   @@index([userId])
   @@index([read])
+  @@index([userId, read])
+  @@index([createdAt])
 }
 
 enum NotificationType {
