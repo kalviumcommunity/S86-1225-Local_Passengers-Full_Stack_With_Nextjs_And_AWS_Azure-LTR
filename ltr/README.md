@@ -7,6 +7,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 - [Getting Started](#getting-started)
 - [Database Setup](#database-setup)
 - [Migration & Seeding](#migration--seeding)
+- [Global API Response Handler](#global-api-response-handler)
 - [Development](#development)
 - [Learn More](#learn-more)
 - [Deployment](#deployment)
@@ -542,7 +543,343 @@ Response (400):
 - ❌ Over-fetching: Use `select` to get only needed fields
 - ❌ Missing indexes: Added composite and single-column indexes for common queries
 - ❌ Unbounded queries: All queries include pagination with `take/skip`
+## 🌐 Global API Response Handler
 
+### Overview
+
+This project implements a **standardized API response structure** across all endpoints to ensure consistency, improve developer experience, and enhance observability in production.
+
+Every API endpoint returns responses in a predictable format, making it easier for frontend developers to handle results and errors uniformly.
+
+### Why Standardized Responses Matter
+
+Without a standard response format, different endpoints might return data in different shapes, leading to:
+- **Inconsistent Error Handling**: Frontend must adapt to various error formats
+- **Difficult Debugging**: No standard way to track and log errors
+- **Poor Developer Experience**: Increased code complexity and maintenance cost
+- **Unpredictable Integration**: API consumers cannot rely on consistent structure
+
+### Unified Response Envelope
+
+All API responses follow this structure:
+
+#### Success Response Format
+```typescript
+{
+  "success": true,
+  "message": string,
+  "data": any,
+  "timestamp": string (ISO 8601)
+}
+```
+
+#### Error Response Format
+```typescript
+{
+  "success": false,
+  "message": string,
+  "error": {
+    "code": string,
+    "details"?: any
+  },
+  "timestamp": string (ISO 8601)
+}
+```
+
+### Response Handler Utility
+
+Located at: `src/lib/responseHandler.ts`
+
+The utility provides helper functions for consistent responses:
+
+```typescript
+// Success responses
+sendSuccess(data, message?, status?)
+sendSuccess(users, "Users fetched successfully", 200)
+
+// Generic error
+sendError(message, code, status, details?)
+
+// Specific error helpers
+sendValidationError(message, details?)     // 400
+sendAuthError(message, details?)           // 401
+sendForbiddenError(message, details?)      // 403
+sendNotFoundError(message, details?)       // 404
+sendConflictError(message, details?)       // 409
+sendDatabaseError(message, details?)       // 500
+sendExternalAPIError(message, details?)    // 502
+```
+
+### Error Codes
+
+Located at: `src/lib/errorCodes.ts`
+
+All errors use standardized error codes for easy tracking and debugging:
+
+| Code Range | Category | Examples |
+|------------|----------|----------|
+| E001-E099 | Validation Errors | `E001`: Validation Error, `E002`: Missing Required Field |
+| E100-E199 | Authentication Errors | `E100`: Auth Error, `E101`: Invalid Credentials |
+| E200-E299 | Authorization Errors | `E200`: Forbidden, `E201`: Insufficient Permissions |
+| E300-E399 | Resource Errors | `E300`: Not Found, `E301`: User Not Found |
+| E400-E499 | Conflict Errors | `E400`: Conflict, `E401`: User Already Exists |
+| E500-E599 | Database Errors | `E500`: Database Error, `E502`: Query Failed |
+| E600-E699 | External API Errors | `E600`: External API Error, `E601`: Railway API Error |
+| E700-E799 | Server Errors | `E700`: Internal Error, `E702`: Service Unavailable |
+| E800-E899 | Business Logic Errors | `E800`: Operation Failed, `E801`: Alert Creation Failed |
+
+### Implementation Examples
+
+#### Example 1: GET /api/trains
+
+```typescript
+import { sendSuccess, sendError } from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
+
+export async function GET(req: NextRequest) {
+  try {
+    const trains = await fetchTrainsFromAPI();
+    return sendSuccess(
+      { trains, pagination: {...} },
+      "Trains fetched successfully"
+    );
+  } catch (err) {
+    return sendError(
+      "Failed to fetch trains",
+      ERROR_CODES.TRAIN_FETCH_FAILED,
+      500,
+      err
+    );
+  }
+}
+```
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "message": "Trains fetched successfully",
+  "data": {
+    "trains": [
+      {
+        "trainId": "12301",
+        "trainName": "Howrah Rajdhani Express",
+        "source": "New Delhi",
+        "destination": "Howrah"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 50,
+      "totalPages": 5
+    }
+  },
+  "timestamp": "2025-12-16T10:00:00.000Z"
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "message": "Failed to fetch trains",
+  "error": {
+    "code": "E802",
+    "details": "Network timeout"
+  },
+  "timestamp": "2025-12-16T10:00:00.000Z"
+}
+```
+
+#### Example 2: POST /api/auth/register
+
+```typescript
+import {
+  sendSuccess,
+  sendValidationError,
+  sendConflictError,
+  sendError,
+} from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
+
+export async function POST(req: Request) {
+  try {
+    const { email, password } = await req.json();
+    
+    if (!email || !password) {
+      return sendValidationError("Email and password are required");
+    }
+    
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return sendConflictError("User with this email already exists");
+    }
+    
+    const user = await createUser({ email, password });
+    return sendSuccess(user, "User registered successfully", 201);
+    
+  } catch (err) {
+    return sendError(
+      "Failed to register user",
+      ERROR_CODES.USER_CREATION_FAILED,
+      500,
+      err
+    );
+  }
+}
+```
+
+**Validation Error Response (400):**
+```json
+{
+  "success": false,
+  "message": "Email and password are required",
+  "error": {
+    "code": "E001"
+  },
+  "timestamp": "2025-12-16T10:00:00.000Z"
+}
+```
+
+**Conflict Error Response (409):**
+```json
+{
+  "success": false,
+  "message": "User with this email already exists",
+  "error": {
+    "code": "E401"
+  },
+  "timestamp": "2025-12-16T10:00:00.000Z"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "id": 1,
+    "email": "user@example.com",
+    "name": "John Doe",
+    "createdAt": "2025-12-16T10:00:00.000Z"
+  },
+  "timestamp": "2025-12-16T10:00:00.000Z"
+}
+```
+
+#### Example 3: GET /api/alerts
+
+```typescript
+import { sendSuccess, sendAuthError, sendError } from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
+
+export async function GET(req: NextRequest) {
+  try {
+    const user = await verifyAuth(req);
+    
+    if (!user) {
+      return sendAuthError("Not authenticated");
+    }
+    
+    const alerts = await prisma.alert.findMany({
+      where: { userId: user.userId }
+    });
+    
+    return sendSuccess(alerts, "Alerts fetched successfully");
+    
+  } catch (err) {
+    return sendError(
+      "Failed to fetch alerts",
+      ERROR_CODES.DATABASE_ERROR,
+      500,
+      err
+    );
+  }
+}
+```
+
+**Auth Error Response (401):**
+```json
+{
+  "success": false,
+  "message": "Not authenticated",
+  "error": {
+    "code": "E100"
+  },
+  "timestamp": "2025-12-16T10:00:00.000Z"
+}
+```
+
+### API Routes Using Global Handler
+
+The following routes have been updated to use the standardized response handler:
+
+1. **Authentication Routes**
+   - `POST /api/auth/register` - User registration
+   - `POST /api/auth/login` - User login
+
+2. **Train Routes**
+   - `GET /api/trains` - Fetch trains with pagination
+
+3. **Alert Routes**
+   - `GET /api/alerts` - Fetch user alerts
+   - `POST /api/alerts` - Create new alert
+
+### Benefits of This Approach
+
+#### 1. **Developer Experience (DX)**
+- **Predictable Structure**: Frontend developers always know what to expect
+- **Easy Debugging**: Error codes and timestamps make tracking issues simple
+- **Reduced Boilerplate**: Reusable helpers reduce repetitive code
+- **Type Safety**: TypeScript types ensure correct usage
+
+#### 2. **Observability & Monitoring**
+- **Consistent Logging**: All errors follow same format for log aggregation
+- **Error Tracking**: Error codes enable easy integration with Sentry/Datadog
+- **Timestamp Tracking**: ISO timestamps help correlate issues across services
+- **Details Field**: Captures additional context for debugging
+
+#### 3. **Maintainability**
+- **Single Source of Truth**: All response logic in one place
+- **Easy Updates**: Change format once, affects all endpoints
+- **Code Consistency**: New developers follow established patterns
+- **Testing**: Predictable structure simplifies test assertions
+
+#### 4. **Production Readiness**
+- **API Documentation**: Easy to document with consistent structure
+- **Client Integration**: Mobile/web apps handle responses uniformly
+- **Monitoring Dashboards**: Standard format enables metric tracking
+- **Error Alerting**: Error codes trigger appropriate alerts
+
+### Testing the Response Handler
+
+Use the provided test data files:
+- [comprehensive-testing.bru](ltr/comprehensive-testing.bru) - Bruno API test collection
+- [test-data.json](test-data.json) - Sample test data
+- [TEST_DATA.md](TEST_DATA.md) - Documentation with examples
+
+### Best Practices
+
+1. **Always use helper functions** - Don't create responses manually
+2. **Use appropriate error codes** - Follow the defined code categories
+3. **Include meaningful messages** - Help users understand what went wrong
+4. **Add details for debugging** - Include error objects in non-production
+5. **Log errors** - Console log before returning error responses
+6. **Be consistent** - All endpoints must follow the same format
+
+### Reflection: Why This Matters
+
+The global response handler is like proper punctuation in writing — it doesn't just make individual sentences (endpoints) readable; it makes your entire story (application) coherent and professional.
+
+By standardizing responses:
+- **Frontend teams** can build robust error handling once, not per endpoint
+- **DevOps teams** can set up monitoring and alerting with confidence
+- **QA teams** can write consistent test assertions
+- **Future developers** can understand the API contract instantly
+
+This investment in structure pays dividends in reduced debugging time, faster feature development, and improved production stability.
 ## �🛠️ Troubleshooting
 
 ### Database Connection Issues

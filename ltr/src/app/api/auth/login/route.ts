@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import {
+  sendValidationError,
+  sendAuthError,
+  sendError,
+} from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -18,10 +24,7 @@ export async function POST(req: NextRequest) {
 
     // Validate input
     if (!email || !password) {
-      return NextResponse.json(
-        { error: "Email and password are required" },
-        { status: 400 }
-      );
+      return sendValidationError("Email and password are required");
     }
 
     // Find user
@@ -30,20 +33,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { error: "Invalid credentials" },
-        { status: 401 }
-      );
+      return sendAuthError("Invalid email or password");
     }
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
-      return NextResponse.json(
-        { error: "Invalid credentials" },
-        { status: 401 }
-      );
+      return sendAuthError("Invalid email or password");
     }
 
     // Generate JWT token
@@ -77,9 +74,6 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("Login error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return sendError("Failed to login", ERROR_CODES.AUTH_ERROR, 500, error);
   }
 }

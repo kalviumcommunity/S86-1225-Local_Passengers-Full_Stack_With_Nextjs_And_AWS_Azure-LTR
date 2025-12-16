@@ -1,6 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
+import {
+  sendSuccess,
+  sendAuthError,
+  sendValidationError,
+  sendError,
+} from "@/lib/responseHandler";
+import { ERROR_CODES } from "@/lib/errorCodes";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -36,7 +43,7 @@ export async function GET(req: NextRequest) {
     const authUser = await verifyAuth(req);
 
     if (!authUser) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      return sendAuthError("Not authenticated");
     }
 
     // Fetch alerts from database
@@ -49,13 +56,15 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ alerts }, { status: 200 });
+    return sendSuccess(alerts, "Alerts fetched successfully", 200);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("Get alerts error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+    return sendError(
+      "Failed to fetch alerts",
+      ERROR_CODES.DATABASE_ERROR,
+      500,
+      error
     );
   }
 }
@@ -70,17 +79,14 @@ export async function POST(req: NextRequest) {
     const authUser = await verifyAuth(req);
 
     if (!authUser) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      return sendAuthError("Not authenticated");
     }
 
     const body = await req.json();
     const { trainId, trainName, source, destination, alertType } = body;
 
     if (!trainId) {
-      return NextResponse.json(
-        { error: "trainId is required" },
-        { status: 400 }
-      );
+      return sendValidationError("trainId is required");
     }
 
     // Save alert to database
@@ -95,16 +101,15 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(
-      { message: "Alert created successfully", alert },
-      { status: 201 }
-    );
+    return sendSuccess(alert, "Alert created successfully", 201);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("Create alert error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+    return sendError(
+      "Failed to create alert",
+      ERROR_CODES.ALERT_CREATION_FAILED,
+      500,
+      error
     );
   }
 }
