@@ -550,3 +550,35 @@ docker images | grep nextjs_app
 3. Implement database migrations
 4. Set up CI/CD pipelines for automated Docker builds
 5. Deploy to cloud platforms (AWS, Azure) using Docker images
+
+
+### Migration Issues
+
+```bash
+# Check migration status
+npx prisma migrate status
+
+# Reset database (WARNING: deletes data)
+npx prisma migrate reset
+
+# Force apply migrations
+npx prisma migrate deploy
+```
+
+### Seed Issues
+
+```bash
+# Clear database and re-seed
+npx prisma migrate reset
+
+# Run seed manually
+npx prisma db seed
+```
+
+For more troubleshooting help, see [MIGRATIONS_AND_SEEDING.md](./MIGRATIONS_AND_SEEDING.md).
+
+---
+
+**Project**: Local Train Passengers Management System  
+**Author**: Kalvium Student  
+**Last Updated**: December 15, 2025
