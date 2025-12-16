@@ -338,6 +338,204 @@ POST http://localhost:3000/api/query-optimization/batch
 Body: { "tags": ["Frontend", "Backend", "Database"] }
 ```
 
+## 🔌 RESTful API Routes (Assignment 2.17)
+
+### API Route Hierarchy
+
+```
+/api/
+├── users/
+│   ├── route.ts         (GET all, POST create)
+│   └── [id]/route.ts    (GET by ID, PUT update, DELETE)
+├── projects/
+│   ├── route.ts         (GET all, POST create)
+│   └── [id]/route.ts    (GET by ID, PUT update, DELETE)
+├── tasks/
+│   ├── route.ts         (GET all, POST create)
+│   └── [id]/route.ts    (GET by ID, PUT update, DELETE)
+├── teams/
+│   ├── route.ts         (GET all, POST create)
+│   └── [id]/route.ts    (GET by ID, PUT update, DELETE)
+└── transactions/
+    └── route.ts         (POST transactions, GET demo)
+```
+
+### Naming Conventions Applied
+
+- ✅ **Resource-based**: Use nouns (users, projects, tasks) not verbs (getUsers, createProject)
+- ✅ **Consistent pluralization**: All endpoints use plural resource names
+- ✅ **Lowercase paths**: All routes lowercase and kebab-case for nested resources
+- ✅ **HTTP verb semantics**: GET (read), POST (create), PUT (update), DELETE (remove)
+- ✅ **Predictable hierarchy**: Resource then ID then sub-resources
+
+### HTTP Status Codes Used
+
+| Code | Usage |
+|------|-------|
+| **200** | Successful GET/PUT/DELETE request |
+| **201** | Successful POST (resource created) |
+| **400** | Bad request (missing/invalid parameters) |
+| **404** | Resource not found |
+| **500** | Internal server error |
+
+### Users Endpoints
+
+```bash
+# Get all users (with pagination)
+GET /api/users?page=1&limit=10
+GET /api/users?role=ADMIN  # Filter by role
+
+# Create a new user
+POST /api/users
+Body: {
+  "email": "user@example.com",
+  "name": "John Doe",
+  "phone": "1234567890",
+  "role": "PROJECT_MANAGER"
+}
+
+# Get user by ID (with counts)
+GET /api/users/1
+
+# Update user
+PUT /api/users/1
+Body: { "name": "Updated Name", "phone": "0987654321" }
+
+# Delete user
+DELETE /api/users/1
+```
+
+### Projects Endpoints
+
+```bash
+# Get all projects (with pagination and filtering)
+GET /api/projects?page=1&limit=10
+GET /api/projects?status=IN_PROGRESS  # Filter by status
+
+# Create a project
+POST /api/projects
+Body: {
+  "name": "Local Passengers App",
+  "description": "Transport management system",
+  "status": "PLANNING",
+  "createdBy": 1,
+  "budget": 50000,
+  "location": "Mumbai"
+}
+
+# Get project details
+GET /api/projects/1
+
+# Update project
+PUT /api/projects/1
+Body: { "status": "IN_PROGRESS", "budget": 60000 }
+
+# Delete project
+DELETE /api/projects/1
+```
+
+### Tasks Endpoints
+
+```bash
+# Get all tasks with filtering
+GET /api/tasks?page=1&limit=10
+GET /api/tasks?status=TODO&priority=HIGH
+GET /api/tasks?projectId=1  # Filter by project
+
+# Create a task
+POST /api/tasks
+Body: {
+  "title": "Setup Database",
+  "description": "Initialize PostgreSQL database",
+  "status": "TODO",
+  "priority": "HIGH",
+  "projectId": 1,
+  "assignedTo": 2,
+  "dueDate": "2025-12-31"
+}
+
+# Get task with comments and subtasks
+GET /api/tasks/1
+
+# Update task
+PUT /api/tasks/1
+Body: { "status": "IN_PROGRESS", "priority": "URGENT" }
+
+# Delete task
+DELETE /api/tasks/1
+```
+
+### Teams Endpoints
+
+```bash
+# Get all teams
+GET /api/teams?page=1&limit=10
+
+# Create a team
+POST /api/teams
+Body: {
+  "name": "Frontend Team",
+  "description": "Responsible for UI/UX",
+  "createdBy": 1
+}
+
+# Get team with members and projects
+GET /api/teams/1
+
+# Update team
+PUT /api/teams/1
+Body: { "description": "Updated description" }
+
+# Delete team
+DELETE /api/teams/1
+```
+
+### Pagination Pattern (All List Endpoints)
+
+All GET endpoints follow consistent pagination:
+
+```bash
+GET /api/resource?page=1&limit=10
+
+Response:
+{
+  "success": true,
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 45,
+    "pages": 5
+  }
+}
+```
+
+### Error Response Format (Consistent Across All Endpoints)
+
+```bash
+GET /api/users/999
+
+Response (404):
+{
+  "error": "User not found"
+}
+
+Response (400):
+{
+  "error": "Email and name are required"
+}
+```
+
+### Benefits of This Structure
+
+- **Predictability**: Developers can guess endpoint URL without documentation
+- **Consistency**: Same pattern applied across all resources
+- **Scalability**: Easy to add new resources following same conventions
+- **Integration**: Clear contracts reduce client-server integration errors
+- **Maintenance**: Reduced cognitive load when onboarding new developers
+
+
+
 ### Anti-patterns Avoided
 
 - ❌ N+1 queries: Instead of fetching all relations, we fetch counts and batch
