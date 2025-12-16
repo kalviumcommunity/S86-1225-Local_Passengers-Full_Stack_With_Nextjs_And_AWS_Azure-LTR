@@ -1,19 +1,60 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+
+const JWT_SECRET =
+  process.env.JWT_SECRET || "your-secret-key-change-in-production";
+
+// Middleware to verify JWT and get user
+async function verifyAuth(req: NextRequest) {
+  const token =
+    req.cookies.get("token")?.value ||
+    req.headers.get("Authorization")?.replace("Bearer ", "");
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: number;
+      email: string;
+    };
+    return decoded;
+  } catch {
+    return null;
+  }
+}
 
 /**
- * GET /api/users/[id]
- * Fetch a specific user by ID with their teams and projects
+ * GET /api/users/:id
+ * Get user profile
+ * Access: Authenticated User (self only)
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = parseInt(params.id);
+    const { id } = await params;
+    const userId = parseInt(id);
+    const authUser = await verifyAuth(request);
+
+    if (!authUser) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
     if (isNaN(userId)) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
+    // Check if user is accessing their own profile
+    if (authUser.userId !== userId) {
+      return NextResponse.json(
+        { error: "Forbidden: You can only access your own profile" },
+        { status: 403 }
+      );
     }
 
     const user = await prisma.user.findUnique({
@@ -22,18 +63,8 @@ export async function GET(
         id: true,
         email: true,
         name: true,
-        phone: true,
-        role: true,
         createdAt: true,
         updatedAt: true,
-        _count: {
-          select: {
-            teams: true,
-            projects: true,
-            tasks: true,
-            comments: true,
-          },
-        },
       },
     });
 
@@ -41,11 +72,9 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({
-      success: true,
-      data: user,
-    });
-  } catch (error: any) {
+    return NextResponse.json({ user }, { status: 200 });
+  } catch (error: unknown) {
+    // eslint-disable-next-line no-console
     console.error("GET /api/users/[id] error:", error);
     return NextResponse.json(
       { error: "Failed to fetch user" },
@@ -55,23 +84,37 @@ export async function GET(
 }
 
 /**
- * PUT /api/users/[id]
- * Update a user by ID
- * Body: { name?, email?, phone?, role? }
+ * PUT /api/users/:id
+ * Update user profile
+ * Access: Authenticated User (self only)
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = parseInt(params.id);
+    const { id } = await params;
+    const userId = parseInt(id);
+    const authUser = await verifyAuth(request);
+
+    if (!authUser) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
     if (isNaN(userId)) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
     }
 
+    // Check if user is updating their own profile
+    if (authUser.userId !== userId) {
+      return NextResponse.json(
+        { error: "Forbidden: You can only update your own profile" },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
-    const { name, email, phone, role } = body;
+    const { name, email, password } = body;
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
@@ -82,36 +125,37 @@ export async function PUT(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Build update data
+    const updateData: Record<string, string> = {};
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: {
-        ...(name && { name }),
-        ...(email && { email }),
-        ...(phone !== undefined && { phone }),
-        ...(role && { role }),
-      },
+      data: updateData,
       select: {
         id: true,
         email: true,
         name: true,
-        phone: true,
-        role: true,
         updatedAt: true,
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "User updated successfully",
-      data: updatedUser,
-    });
-  } catch (error: any) {
+    return NextResponse.json(
+      { message: "User updated successfully", user: updatedUser },
+      { status: 200 }
+    );
+  } catch (error: unknown) {
+    // eslint-disable-next-line no-console
     console.error("PUT /api/users/[id] error:", error);
 
-    if (error.code === "P2002") {
+    if ((error as { code?: string }).code === "P2002") {
       return NextResponse.json(
         { error: "Email already exists" },
-        { status: 400 }
+        { status: 409 }
       );
     }
 
@@ -123,18 +167,33 @@ export async function PUT(
 }
 
 /**
- * DELETE /api/users/[id]
- * Delete a user by ID
+ * DELETE /api/users/:id
+ * Delete user account
+ * Access: Authenticated User (self only)
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = parseInt(params.id);
+    const { id } = await params;
+    const userId = parseInt(id);
+    const authUser = await verifyAuth(request);
+
+    if (!authUser) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
     if (isNaN(userId)) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
+    // Check if user is deleting their own account
+    if (authUser.userId !== userId) {
+      return NextResponse.json(
+        { error: "Forbidden: You can only delete your own account" },
+        { status: 403 }
+      );
     }
 
     const user = await prisma.user.findUnique({
@@ -149,12 +208,28 @@ export async function DELETE(
       where: { id: userId },
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "User deleted successfully",
+    // Clear token cookie
+    const response = NextResponse.json(
+      { message: "User account deleted successfully" },
+      { status: 200 }
+    );
+
+    response.cookies.set("token", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 0,
     });
-  } catch (error: any) {
+
+    return response;
+  } catch (error: unknown) {
+    // eslint-disable-next-line no-console
     console.error("DELETE /api/users/[id] error:", error);
+
+    if ((error as { code?: string }).code === "P2025") {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     return NextResponse.json(
       { error: "Failed to delete user" },
       { status: 500 }
