@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
+import { createRerouteSchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -39,14 +41,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { trainId, source, destination, reason } = body;
 
-    if (!trainId || !source || !destination) {
-      return NextResponse.json(
-        { error: "trainId, source, and destination are required" },
-        { status: 400 }
-      );
-    }
+    // Validate input using Zod schema
+    const validatedData = createRerouteSchema.parse(body);
+    const { trainId, source, destination, reason } = validatedData;
 
     // TODO: Implement actual reroute algorithm
     // This would typically involve:
@@ -63,7 +61,7 @@ export async function POST(req: NextRequest) {
         destination,
         estimatedTime: "10 hours",
       },
-      reason: reason || "Track maintenance",
+      reason,
       suggestions: [
         {
           id: 1,
@@ -89,6 +87,20 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    // Handle Zod validation errors
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          details: error.issues.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
     // eslint-disable-next-line no-console
     console.error("Generate reroute error:", error);
     return NextResponse.json(

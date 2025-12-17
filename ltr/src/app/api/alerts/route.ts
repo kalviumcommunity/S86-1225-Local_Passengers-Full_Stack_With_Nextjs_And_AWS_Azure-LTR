@@ -8,6 +8,8 @@ import {
   sendError,
 } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
+import { createAlertSchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -83,26 +85,37 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { trainId, trainName, source, destination, alertType } = body;
 
-    if (!trainId) {
-      return sendValidationError("trainId is required");
-    }
+    // Validate input using Zod schema
+    const validatedData = createAlertSchema.parse(body);
+    const { trainId, trainName, source, destination, alertType } =
+      validatedData;
 
     // Save alert to database
     const alert = await prisma.alert.create({
       data: {
         userId: authUser.userId,
         trainId,
-        trainName: trainName || "Unknown Train",
-        source: source || "Unknown",
-        destination: destination || "Unknown",
-        alertType: alertType || "all",
+        trainName,
+        source,
+        destination,
+        alertType,
       },
     });
 
     return sendSuccess(alert, "Alert created successfully", 201);
   } catch (error) {
+    // Handle Zod validation errors
+    if (error instanceof ZodError) {
+      return sendValidationError(
+        "Validation failed",
+        error.issues.map((e) => ({
+          field: e.path.join("."),
+          message: e.message,
+        }))
+      );
+    }
+
     // eslint-disable-next-line no-console
     console.error("Create alert error:", error);
     return sendError(

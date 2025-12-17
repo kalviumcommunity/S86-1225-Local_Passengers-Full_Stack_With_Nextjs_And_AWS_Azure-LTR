@@ -8,6 +8,8 @@ import {
   sendError,
 } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
+import { userLoginSchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -20,12 +22,10 @@ const JWT_SECRET =
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, password } = body;
 
-    // Validate input
-    if (!email || !password) {
-      return sendValidationError("Email and password are required");
-    }
+    // Validate input using Zod schema
+    const validatedData = userLoginSchema.parse(body);
+    const { email, password } = validatedData;
 
     // Find user
     const user = await prisma.user.findUnique({
@@ -72,6 +72,17 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (error) {
+    // Handle Zod validation errors
+    if (error instanceof ZodError) {
+      return sendValidationError(
+        "Validation failed",
+        error.issues.map((e) => ({
+          field: e.path.join("."),
+          message: e.message,
+        }))
+      );
+    }
+
     // eslint-disable-next-line no-console
     console.error("Login error:", error);
     return sendError("Failed to login", ERROR_CODES.AUTH_ERROR, 500, error);

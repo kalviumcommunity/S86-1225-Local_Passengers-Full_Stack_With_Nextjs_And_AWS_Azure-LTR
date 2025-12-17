@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
+import { userUpdateSchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -114,7 +115,10 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, email, password } = body;
+
+    // Validate input using Zod schema
+    const validatedData = userUpdateSchema.parse(body);
+    const { name, phone, profilePicture, role } = validatedData;
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
@@ -128,10 +132,10 @@ export async function PUT(
     // Build update data
     const updateData: Record<string, string> = {};
     if (name !== undefined) updateData.name = name;
-    if (email !== undefined) updateData.email = email;
-    if (password) {
-      updateData.password = await bcrypt.hash(password, 10);
-    }
+    if (phone !== undefined) updateData.phone = phone;
+    if (profilePicture !== undefined)
+      updateData.profilePicture = profilePicture;
+    if (role !== undefined) updateData.role = role;
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -149,6 +153,20 @@ export async function PUT(
       { status: 200 }
     );
   } catch (error: unknown) {
+    // Handle Zod validation errors
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          details: error.issues.map((e) => ({
+            field: e.path.join("."),
+            message: e.message,
+          })),
+        },
+        { status: 400 }
+      );
+    }
+
     // eslint-disable-next-line no-console
     console.error("PUT /api/users/[id] error:", error);
 
