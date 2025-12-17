@@ -1252,3 +1252,84 @@ All validation scenarios tested and verified:
 **Project**: Local Train Passengers Management System  
 **Author**: Kalvium Student  
 **Last Updated**: December 17, 2025
+
+
+Authentication APIs (Signup / Login)
+
+This project uses a secure authentication system to manage user access. The authentication flow is implemented using Next.js API routes, Prisma, bcrypt, JWT, and Zod for validation.
+
+Signup (Register)
+
+Users can register using email and password.
+
+Input data is validated using Zod schemas to ensure correct format.
+
+Passwords are hashed using bcrypt before storing in the database.
+
+Duplicate email registrations are prevented.
+
+Login
+
+Users can log in using their registered email and password.
+
+Credentials are validated using Zod.
+
+Passwords are verified using bcrypt.
+
+On successful login, a JWT token is generated.
+
+The token is stored securely in an HTTP-only cookie.
+
+🛡️ Authorization Middleware
+
+To protect private APIs, JWT-based authorization middleware is implemented using Next.js middleware.
+
+The middleware checks for a valid JWT token in:
+
+HTTP-only cookies, or
+
+Authorization header (Bearer token)
+
+If the token is missing or invalid, access is denied.
+
+Only authenticated users can access protected routes like:
+
+/api/users
+
+/api/projects
+
+/api/tasks
+
+/api/alerts
+
+This ensures secure access control across the application.
+
+✅ Input Validation with Zod
+
+All authentication-related inputs are validated using Zod.
+
+Centralized schema files are used for maintainability.
+
+Invalid requests return clear and structured validation error messages.
+
+🧪 Testing
+
+The APIs were tested using Postman:
+
+Signup with valid and invalid inputs
+
+Login with correct and incorrect credentials
+
+Accessing protected routes with and without JWT token
+
+📌 Summary
+
+Secure password handling using bcrypt
+
+Token-based authentication using JWT
+
+Authorization middleware for protected routes
+
+Input validation using Zod schemas
+
+This setup provides a secure and scalable authentication system for the LocalPassengers application.
