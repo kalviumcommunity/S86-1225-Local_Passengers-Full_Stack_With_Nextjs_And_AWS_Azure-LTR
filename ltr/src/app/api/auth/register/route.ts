@@ -8,6 +8,8 @@ import {
   sendError,
 } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
+import { userRegistrationSchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 /**
  * POST /api/auth/register
@@ -17,12 +19,10 @@ import { ERROR_CODES } from "@/lib/errorCodes";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, password, name } = body;
 
-    // Validate input
-    if (!email || !password) {
-      return sendValidationError("Email and password are required");
-    }
+    // Validate input using Zod schema
+    const validatedData = userRegistrationSchema.parse(body);
+    const { email, password, name } = validatedData;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -53,6 +53,17 @@ export async function POST(req: NextRequest) {
 
     return sendSuccess(user, "User registered successfully", 201);
   } catch (error) {
+    // Handle Zod validation errors
+    if (error instanceof ZodError) {
+      return sendValidationError(
+        "Validation failed",
+        error.issues.map((e) => ({
+          field: e.path.join("."),
+          message: e.message,
+        }))
+      );
+    }
+
     // eslint-disable-next-line no-console
     console.error("Registration error:", error);
     return sendError(

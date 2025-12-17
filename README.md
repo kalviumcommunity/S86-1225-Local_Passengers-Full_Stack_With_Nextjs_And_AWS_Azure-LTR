@@ -1124,6 +1124,131 @@ This alignment between domain concepts and API structure makes the system intuit
 
 ---
 
+---
+
+## ✅ Input Validation with Zod (Assignment 2.19)
+
+### Overview
+
+Comprehensive input validation has been implemented using **Zod**, a TypeScript-first schema validation library. All POST and PUT API requests are validated to ensure data integrity and prevent malformed requests from reaching the database.
+
+### Why Zod?
+
+- **Type Safety**: Automatic TypeScript type inference from schemas
+- **Schema Reusability**: Same schemas work on client and server
+- **Clear Error Messages**: Descriptive validation feedback for users
+- **Runtime Validation**: Catches invalid data before processing
+- **Zero Dependencies**: Lightweight and fast
+
+### Implementation
+
+#### Validation Schemas Created
+
+All validation schemas are located in `ltr/src/lib/schemas/` with centralized exports:
+- **userSchema.ts** - User registration, login, and profile updates
+- **alertSchema.ts** - Train alert creation and modifications
+- **rerouteSchema.ts** - Reroute generation validation
+- **trainSchema.ts** - Train query parameters
+- **index.ts** - Central export for all schemas
+
+#### API Routes Updated with Validation
+
+**Authentication Routes:**
+- `POST /api/auth/register` - Validates email format, password strength (min 8 chars, uppercase, lowercase, number), and name length
+- `POST /api/auth/login` - Validates email format and password presence
+
+**Alert Routes:**
+- `POST /api/alerts` - Validates trainId, trainName, source, destination, and alertType enum (all | delay | cancellation | platform_change | reroute)
+
+**Reroute Routes:**
+- `POST /api/reroutes` - Validates trainId, source, destination, and reason length (max 500 chars)
+
+**User Routes:**
+- `PUT /api/users/:id` - Validates name length, phone format, profilePicture URL, and role enum
+
+### Validation Rules
+
+**User Registration & Login:**
+- Email must be valid format
+- Password must be at least 8 characters with uppercase, lowercase, and number
+- Name must be 2-100 characters (optional)
+- Phone must match international format (optional)
+
+**Alert Creation:**
+- Train ID is required
+- Train name is required (max 200 characters)
+- Source and destination stations required (max 100 characters each)
+- Alert type must be one of predefined enums
+
+**Reroute Generation:**
+- Train ID, source, and destination are required
+- Reason is optional but limited to 500 characters
+
+**User Updates:**
+- All fields optional but must meet format requirements if provided
+- Phone must match valid international format
+- Profile picture must be valid URL
+- Role must be ADMIN, PROJECT_MANAGER, TEAM_LEAD, or USER
+
+### Error Response Format
+
+All validation errors return structured responses with:
+- `success: false` status
+- `message` describing the error type
+- `errors` array with specific field errors showing which field failed and why
+- HTTP 400 status code
+
+### Benefits Delivered
+
+**Data Integrity:**
+- Invalid data caught before reaching database
+- Prevents application crashes from malformed inputs
+- Ensures consistency across all API endpoints
+
+**Security:**
+- Prevents injection attacks through strict validation
+- Enforces password complexity requirements
+- Validates email formats and data types
+- Limits string lengths to prevent overflow
+
+**Developer Experience:**
+- Single source of truth for validation rules
+- Automatic TypeScript types from schemas
+- Clear, descriptive error messages
+- Easy to test and maintain
+- Schema reusability between client and server
+
+**Consistency:**
+- Same validation rules apply on both frontend and backend
+- Uniform error response format across all endpoints
+- Predictable API behavior
+
+### Testing
+
+Complete testing documentation with examples available in:
+- **[ltr/VALIDATION_TESTING.md](./ltr/VALIDATION_TESTING.md)** - Comprehensive test cases with passing and failing scenarios
+- **[ltr/QUICKSTART_TESTING.md](./ltr/QUICKSTART_TESTING.md)** - Quick commands to verify implementation
+- **[ltr/ZOD_IMPLEMENTATION_SUMMARY.md](./ltr/ZOD_IMPLEMENTATION_SUMMARY.md)** - Complete implementation details
+
+### Verification Checklist
+
+All validation scenarios tested and verified:
+- ✅ Valid requests succeed with proper data
+- ✅ Invalid email format rejected
+- ✅ Weak passwords rejected  
+- ✅ Missing required fields rejected
+- ✅ Invalid enums rejected
+- ✅ String length limits enforced
+- ✅ Multiple validation errors shown together
+- ✅ Consistent error response format
+
+### Resources
+
+- [Zod Official Documentation](https://zod.dev)
+- [Next.js API Route Handlers](https://nextjs.org/docs/app/building-your-application/routing/route-handlers)
+
+---
+
 **Project**: Local Train Passengers Management System  
 **Author**: Kalvium Student  
-**Last Updated**: December 16, 2025
+**Last Updated**: December 17, 2025
