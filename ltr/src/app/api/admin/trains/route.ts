@@ -9,24 +9,29 @@ import {
 } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
-// Validation schema for creating a station master
-const createStationMasterSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  name: z.string().min(1, "Name is required"),
-  phone: z.string().optional(),
-  stationId: z.number().optional(),
+// Validation schema for creating a train
+const createTrainSchema = z.object({
+  trainNumber: z.string().min(1, "Train number is required"),
+  trainName: z.string().min(1, "Train name is required"),
+  source: z.string().min(1, "Source is required"),
+  destination: z.string().min(1, "Destination is required"),
+  departureTime: z.string().min(1, "Departure time is required"),
+  arrivalTime: z.string().min(1, "Arrival time is required"),
+  status: z.string().optional(),
+  platform: z.string().optional(),
+  delay: z.number().min(0).optional(),
+  assignedStationId: z.number().optional(),
+  stationMasterId: z.number().optional(),
 });
 
 /**
- * GET /api/admin/users
- * Get all station masters and their data
+ * GET /api/admin/trains
+ * Get all trains (admin view)
  * Access: Admin only
  */
 export async function GET(req: NextRequest) {
@@ -57,27 +62,26 @@ export async function GET(req: NextRequest) {
       return sendForbiddenError("Access denied. Admin role required.");
     }
 
-    // Get query parameters
+    // Get query parameters for filtering
     const { searchParams } = new URL(req.url);
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 20;
+    const stationId = searchParams.get("stationId");
 
     const skip = (page - 1) * limit;
 
-    // Get only station masters with their assigned trains
-    const [stationMasters, total] = await Promise.all([
-      prisma.user.findMany({
-        where: {
-          role: "STATION_MASTER",
-        },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          phone: true,
-          role: true,
-          stationId: true,
-          station: {
+    // Build where clause
+    const where: { assignedStationId?: number } = {};
+    if (stationId) {
+      where.assignedStationId = parseInt(stationId);
+    }
+
+    // Get trains
+    const [trains, total] = await Promise.all([
+      prisma.train.findMany({
+        where,
+        include: {
+          assignedStation: {
             select: {
               id: true,
               stationCode: true,
@@ -85,19 +89,13 @@ export async function GET(req: NextRequest) {
               city: true,
             },
           },
-          managedTrains: {
+          stationMaster: {
             select: {
               id: true,
-              trainNumber: true,
-              trainName: true,
-              source: true,
-              destination: true,
-              status: true,
-              delay: true,
+              name: true,
+              email: true,
             },
           },
-          createdAt: true,
-          updatedAt: true,
         },
         orderBy: {
           createdAt: "desc",
@@ -105,12 +103,12 @@ export async function GET(req: NextRequest) {
         skip,
         take: limit,
       }),
-      prisma.user.count({ where: { role: "STATION_MASTER" } }),
+      prisma.train.count({ where }),
     ]);
 
     return sendSuccess(
       {
-        stationMasters,
+        trains,
         pagination: {
           page,
           limit,
@@ -118,14 +116,14 @@ export async function GET(req: NextRequest) {
           totalPages: Math.ceil(total / limit),
         },
       },
-      "Station masters fetched successfully",
+      "Trains fetched successfully",
       200
     );
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error("GET /api/admin/users error:", error);
+    console.error("GET /api/admin/trains error:", error);
     return sendError(
-      "Failed to fetch station masters",
+      "Failed to fetch trains",
       ERROR_CODES.DATABASE_ERROR,
       500,
       error
@@ -134,8 +132,8 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * POST /api/admin/users
- * Create a new station master account
+ * POST /api/admin/trains
+ * Create a new train
  * Access: Admin only
  */
 export async function POST(req: NextRequest) {
@@ -170,7 +168,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     // Validate input
-    const validation = createStationMasterSchema.safeParse(body);
+    const validation = createTrainSchema.safeParse(body);
     if (!validation.success) {
       return sendValidationError(
         "Invalid input data",
@@ -178,52 +176,52 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: validation.data.email },
+    // Check if train number already exists
+    const existingTrain = await prisma.train.findUnique({
+      where: { trainNumber: validation.data.trainNumber },
     });
 
-    if (existingUser) {
+    if (existingTrain) {
       return sendError(
-        "User with this email already exists",
+        "Train with this number already exists",
         ERROR_CODES.CONFLICT_ERROR,
         409
       );
     }
 
     // Verify station exists if provided
-    if (validation.data.stationId) {
+    if (validation.data.assignedStationId) {
       const station = await prisma.station.findUnique({
-        where: { id: validation.data.stationId },
+        where: { id: validation.data.assignedStationId },
       });
       if (!station) {
         return sendValidationError("Invalid station ID", {
-          stationId: "Station not found",
+          assignedStationId: "Station not found",
         });
       }
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(validation.data.password, 10);
+    // Verify station master exists and has correct role if provided
+    if (validation.data.stationMasterId) {
+      const stationMaster = await prisma.user.findUnique({
+        where: { id: validation.data.stationMasterId },
+      });
+      if (!stationMaster || stationMaster.role !== "STATION_MASTER") {
+        return sendValidationError("Invalid station master ID", {
+          stationMasterId: "Station master not found or invalid role",
+        });
+      }
+    }
 
-    // Create station master
-    const stationMaster = await prisma.user.create({
+    // Create train
+    const train = await prisma.train.create({
       data: {
-        email: validation.data.email,
-        password: hashedPassword,
-        name: validation.data.name,
-        phone: validation.data.phone,
-        role: "STATION_MASTER",
-        stationId: validation.data.stationId,
+        ...validation.data,
+        delay: validation.data.delay || 0,
+        status: validation.data.status || "On Time",
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        role: true,
-        stationId: true,
-        station: {
+      include: {
+        assignedStation: {
           select: {
             id: true,
             stationCode: true,
@@ -231,20 +229,22 @@ export async function POST(req: NextRequest) {
             city: true,
           },
         },
-        createdAt: true,
+        stationMaster: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 
-    return sendSuccess(
-      { user: stationMaster },
-      "Station master created successfully",
-      201
-    );
+    return sendSuccess({ train }, "Train created successfully", 201);
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.error("POST /api/admin/users error:", error);
+    console.error("POST /api/admin/trains error:", error);
     return sendError(
-      "Failed to create station master",
+      "Failed to create train",
       ERROR_CODES.DATABASE_ERROR,
       500,
       error

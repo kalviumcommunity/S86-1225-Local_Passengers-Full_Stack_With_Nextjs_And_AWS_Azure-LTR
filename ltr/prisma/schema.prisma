@@ -22,6 +22,10 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  // Station Master specific fields
+  stationId       Int?
+  station         Station?  @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  
   // Relations
   teams           Team[]
   teamMembers     TeamMember[]
@@ -30,16 +34,17 @@ model User {
   comments        Comment[]
   notifications   Notification[]
   alerts          Alert[]
+  managedTrains   Train[]   @relation("StationMasterTrains")
 
   @@index([email])
   @@index([role])
   @@index([createdAt])
+  @@index([stationId])
 }
 
 enum UserRole {
   ADMIN
-  PROJECT_MANAGER
-  TEAM_LEAD
+  STATION_MASTER
   USER
 }
 
@@ -267,4 +272,52 @@ model Alert {
   @@index([userId])
   @@index([trainId])
   @@index([createdAt])
+}
+
+// Station model - represents railway stations
+model Station {
+  id              Int       @id @default(autoincrement())
+  stationCode     String    @unique
+  stationName     String
+  city            String
+  state           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  stationMasters  User[]
+  trains          Train[]
+
+  @@index([stationCode])
+  @@index([city])
+}
+
+// Train model - represents trains in the system
+model Train {
+  id                Int       @id @default(autoincrement())
+  trainNumber       String    @unique
+  trainName         String
+  source            String
+  destination       String
+  departureTime     String
+  arrivalTime       String
+  status            String    @default("On Time")
+  platform          String?
+  delay             Int       @default(0) // delay in minutes
+  
+  // Station assignment
+  assignedStationId Int?
+  assignedStation   Station?  @relation(fields: [assignedStationId], references: [id], onDelete: SetNull)
+  
+  // Station Master assignment
+  stationMasterId   Int?
+  stationMaster     User?     @relation("StationMasterTrains", fields: [stationMasterId], references: [id], onDelete: SetNull)
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([trainNumber])
+  @@index([assignedStationId])
+  @@index([stationMasterId])
+  @@index([status])
 }

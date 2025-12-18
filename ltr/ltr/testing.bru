@@ -4,15 +4,15 @@ meta {
   seq: 2
 }
 
-get {
-  url: http://localhost:5174/api/trains?
+post {
+  url: http://localhost:5174/api/auth/login
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "email":"vaishnavi@gmail.com",
-    "password":"vaishnavi"
+    "email":"hello@gmail.com",
+    "password":"Hello@113"
   }
 }
