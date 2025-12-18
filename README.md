@@ -1282,7 +1282,22 @@ The token is stored securely in an HTTP-only cookie.
 
 🛡️ Authorization Middleware
 
-To protect private APIs, JWT-based authorization middleware is implemented using Next.js middleware.
+The application implements comprehensive **Role-Based Access Control (RBAC)** with JWT-based authorization middleware.
+
+**Features:**
+- ✅ JWT token validation from cookies or Authorization header
+- ✅ Role-based access control (ADMIN, PROJECT_MANAGER, TEAM_LEAD, USER)
+- ✅ Protected routes with middleware enforcement
+- ✅ Admin-only routes for system management
+- ✅ User context injection for route handlers
+- ✅ Graceful error handling with proper HTTP status codes
+
+**Documentation:**
+For comprehensive authorization details, see:
+- **[ltr/README.md - Authorization Section](./ltr/README.md#-authorization--authentication)** - Full implementation guide
+- **[ltr/AUTHORIZATION_TESTING.md](./ltr/AUTHORIZATION_TESTING.md)** - Testing scenarios and examples
+- **[ltr/AUTHORIZATION_IMPLEMENTATION_SUMMARY.md](./ltr/AUTHORIZATION_IMPLEMENTATION_SUMMARY.md)** - Implementation summary
+- **[ltr/AUTHORIZATION_FLOW_DIAGRAMS.md](./ltr/AUTHORIZATION_FLOW_DIAGRAMS.md)** - Visual flow diagrams
 
 The middleware checks for a valid JWT token in:
 
@@ -1292,11 +1307,10 @@ Authorization header (Bearer token)
 
 If the token is missing or invalid, access is denied.
 
-Only authenticated users can access protected routes like:
-
-/api/users
-
-/api/projects
+Protected routes include:
+- `/api/users/*` - User management (authenticated users)
+- `/api/projects/*` - Project management (authenticated users)
+- `/api/admin/*` - Admin dashboard and user management (ADMIN role only)
 
 /api/tasks
 

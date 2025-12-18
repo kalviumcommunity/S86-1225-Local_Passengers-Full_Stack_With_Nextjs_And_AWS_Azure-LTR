@@ -1,0 +1,29 @@
+meta {
+  name: Delete User
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{baseUrl}}/api/admin/users/3
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+docs {
+  ## Delete User (Admin Only)
+  
+  **Access Level:** ADMIN only
+  
+  Delete a user from the system.
+  All related records will be deleted via cascade.
+  
+  **Security Note:** 
+  Admins cannot delete their own account.
+  
+  Replace `3` in the URL with the actual user ID.
+}
