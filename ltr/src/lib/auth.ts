@@ -56,21 +56,16 @@ export function isAdmin(req: NextRequest): boolean {
  * @param req - NextRequest object
  * @returns boolean
  */
-export function isProjectManager(req: NextRequest): boolean {
+export function isStationMaster(req: NextRequest): boolean {
   const user = getAuthenticatedUser(req);
-  return user?.role === "ADMIN" || user?.role === "PROJECT_MANAGER";
+  return user?.role === "ADMIN" || user?.role === "STATION_MASTER";
 }
 
 /**
- * Check if the authenticated user is a team lead or higher
+ * Check if the authenticated user can manage trains
  * @param req - NextRequest object
  * @returns boolean
  */
-export function isTeamLead(req: NextRequest): boolean {
-  const user = getAuthenticatedUser(req);
-  return (
-    user?.role === "ADMIN" ||
-    user?.role === "PROJECT_MANAGER" ||
-    user?.role === "TEAM_LEAD"
-  );
+export function canManageTrains(req: NextRequest): boolean {
+  return isStationMaster(req);
 }
