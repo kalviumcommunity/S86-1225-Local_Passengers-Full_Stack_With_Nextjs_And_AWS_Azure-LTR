@@ -3,6 +3,7 @@ import { NextResponse, NextRequest } from "next/server";
 import jwt from "jsonwebtoken";
 import { userUpdateSchema } from "@/lib/schemas";
 import { ZodError } from "zod";
+import { handleError } from "@/lib/errorHandler";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -75,12 +76,7 @@ export async function GET(
 
     return NextResponse.json({ user }, { status: 200 });
   } catch (error: unknown) {
-    // eslint-disable-next-line no-console
-    console.error("GET /api/users/[id] error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch user" },
-      { status: 500 }
-    );
+    return handleError(error, "GET /api/users/[id]");
   }
 }
 
@@ -166,10 +162,6 @@ export async function PUT(
         { status: 400 }
       );
     }
-
-    // eslint-disable-next-line no-console
-    console.error("PUT /api/users/[id] error:", error);
-
     if ((error as { code?: string }).code === "P2002") {
       return NextResponse.json(
         { error: "Email already exists" },
@@ -177,10 +169,7 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json(
-      { error: "Failed to update user" },
-      { status: 500 }
-    );
+    return handleError(error, "PUT /api/users/[id]");
   }
 }
 
@@ -241,16 +230,10 @@ export async function DELETE(
 
     return response;
   } catch (error: unknown) {
-    // eslint-disable-next-line no-console
-    console.error("DELETE /api/users/[id] error:", error);
-
     if ((error as { code?: string }).code === "P2025") {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json(
-      { error: "Failed to delete user" },
-      { status: 500 }
-    );
+    return handleError(error, "DELETE /api/users/[id]");
   }
 }

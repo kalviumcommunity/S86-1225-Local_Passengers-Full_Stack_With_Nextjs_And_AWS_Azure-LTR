@@ -398,6 +398,7 @@ hasRole(req, "USER")  // Check specific role
 2. **✅ JWT Expiration**: Tokens expire after 7 days
 3. **✅ HTTP-Only Cookies**: Prevents XSS attacks
 4. **✅ Password Hashing**: bcrypt with salt rounds
+ 
 5. **✅ Role Hierarchy**: Clear permission structure
 6. **✅ Centralized Validation**: Single middleware for all protected routes
 7. **✅ Graceful Error Handling**: Descriptive error messages with proper status codes
