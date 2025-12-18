@@ -11,6 +11,7 @@ import {
 import { ERROR_CODES } from "@/lib/errorCodes";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
+import redis from "@/lib/redis";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -114,6 +115,15 @@ export async function PUT(
         },
       },
     });
+
+    // Invalidate all trains cache entries
+    const pattern = "trains:list:*";
+    const keys = await redis.keys(pattern);
+    if (keys.length > 0) {
+      await redis.del(...keys);
+      // eslint-disable-next-line no-console
+      console.log(`🗑️ Cache invalidated: ${keys.length} keys deleted`);
+    }
 
     return sendSuccess(
       { train: updatedTrain },
