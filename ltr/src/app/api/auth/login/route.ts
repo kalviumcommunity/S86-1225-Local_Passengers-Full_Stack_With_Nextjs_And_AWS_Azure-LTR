@@ -43,10 +43,18 @@ export async function POST(req: NextRequest) {
       return sendAuthError("Invalid email or password");
     }
 
-    // Generate JWT token
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    // Generate JWT token with role
+    const token = jwt.sign(
+      { 
+        userId: user.id, 
+        email: user.email, 
+        role: user.role 
+      }, 
+      JWT_SECRET, 
+      {
+        expiresIn: "7d",
+      }
+    );
 
     // Create response with token in cookie
     const response = NextResponse.json(
@@ -56,6 +64,7 @@ export async function POST(req: NextRequest) {
           id: user.id,
           email: user.email,
           name: user.name,
+          role: user.role,
         },
         token,
       },

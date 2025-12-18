@@ -1,0 +1,30 @@
+meta {
+  name: No Token Test
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/admin
+  body: none
+  auth: none
+}
+
+docs {
+  ## Test: Accessing Protected Route Without Token
+  
+  **Expected Result:** 401 Unauthorized
+  
+  This request attempts to access a protected route without providing any authentication token.
+  The middleware should block access and return:
+  
+  ```json
+  {
+    "success": false,
+    "message": "Authentication required. Token missing.",
+    "errorCode": "AUTH_TOKEN_MISSING"
+  }
+  ```
+  
+  This demonstrates authentication enforcement.
+}
