@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
+import redis from "@/lib/redis";
 
 /**
  * GET /api/trains
  * Get list of trains
  * Access: Public / Authenticated User
- * Data fetched from external API
+ * Data fetched from external API (with Redis caching)
  */
 export async function GET(req: NextRequest) {
   try {
@@ -15,6 +16,24 @@ export async function GET(req: NextRequest) {
     const limit = Number(searchParams.get("limit")) || 10;
     const source = searchParams.get("source");
     const destination = searchParams.get("destination");
+
+    // Create cache key based on query parameters
+    const cacheKey = `trains:list:page=${page}:limit=${limit}:source=${source || "all"}:dest=${destination || "all"}`;
+
+    // Try to get data from cache
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+      // eslint-disable-next-line no-console
+      console.log("✅ Cache Hit - Serving from Redis");
+      return sendSuccess(
+        JSON.parse(cachedData),
+        "Trains fetched successfully (from cache)",
+        200
+      );
+    }
+
+    // eslint-disable-next-line no-console
+    console.log("❌ Cache Miss - Fetching from source");
 
     // TODO: Replace with actual external API call
     // Example: Railway API, Indian Railways API, etc.
@@ -75,19 +94,22 @@ export async function GET(req: NextRequest) {
     const endIndex = startIndex + limit;
     const paginatedTrains = mockTrains.slice(startIndex, endIndex);
 
-    return sendSuccess(
-      {
-        trains: paginatedTrains,
-        pagination: {
-          page,
-          limit,
-          total: mockTrains.length,
-          totalPages: Math.ceil(mockTrains.length / limit),
-        },
+    const responseData = {
+      trains: paginatedTrains,
+      pagination: {
+        page,
+        limit,
+        total: mockTrains.length,
+        totalPages: Math.ceil(mockTrains.length / limit),
       },
-      "Trains fetched successfully",
-      200
-    );
+    };
+
+    // Cache the response for 120 seconds (2 minutes)
+    await redis.set(cacheKey, JSON.stringify(responseData), "EX", 120);
+    // eslint-disable-next-line no-console
+    console.log("💾 Data cached for 120 seconds");
+
+    return sendSuccess(responseData, "Trains fetched successfully", 200);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("Get trains error:", error);

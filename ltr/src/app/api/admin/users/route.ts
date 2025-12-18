@@ -11,6 +11,7 @@ import { ERROR_CODES } from "@/lib/errorCodes";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import redis from "@/lib/redis";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -64,6 +65,24 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit;
 
+    // Create cache key
+    const cacheKey = `users:station-masters:page=${page}:limit=${limit}`;
+
+    // Try to get from cache
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+      // eslint-disable-next-line no-console
+      console.log("✅ Cache Hit - Serving users from Redis");
+      return sendSuccess(
+        JSON.parse(cachedData),
+        "Users fetched successfully (from cache)",
+        200
+      );
+    }
+
+    // eslint-disable-next-line no-console
+    console.log("❌ Cache Miss - Fetching users from database");
+
     // Get only station masters with their assigned trains
     const [stationMasters, total] = await Promise.all([
       prisma.user.findMany({
@@ -108,16 +127,23 @@ export async function GET(req: NextRequest) {
       prisma.user.count({ where: { role: "STATION_MASTER" } }),
     ]);
 
-    return sendSuccess(
-      {
-        stationMasters,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
+    const responseData = {
+      stationMasters,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
+    };
+
+    // Cache for 90 seconds
+    await redis.set(cacheKey, JSON.stringify(responseData), "EX", 90);
+    // eslint-disable-next-line no-console
+    console.log("💾 Users data cached for 90 seconds");
+
+    return sendSuccess(
+      responseData,
       "Station masters fetched successfully",
       200
     );
@@ -234,6 +260,15 @@ export async function POST(req: NextRequest) {
         createdAt: true,
       },
     });
+
+    // Invalidate users cache
+    const pattern = "users:station-masters:*";
+    const keys = await redis.keys(pattern);
+    if (keys.length > 0) {
+      await redis.del(...keys);
+      // eslint-disable-next-line no-console
+      console.log(`🗑️ Users cache invalidated: ${keys.length} keys deleted`);
+    }
 
     return sendSuccess(
       { user: stationMaster },
