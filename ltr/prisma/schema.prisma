@@ -44,6 +44,8 @@ model User {
 
 enum UserRole {
   ADMIN
+  PROJECT_MANAGER
+  TEAM_LEAD
   STATION_MASTER
   USER
 }

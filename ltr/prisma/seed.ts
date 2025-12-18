@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -5,11 +6,30 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Seeding database...");
 
+  // Clear existing data
+  await prisma.notification.deleteMany({});
+  await prisma.comment.deleteMany({});
+  await prisma.subtask.deleteMany({});
+  await prisma.taskTag.deleteMany({});
+  await prisma.projectTag.deleteMany({});
+  await prisma.task.deleteMany({});
+  await prisma.project.deleteMany({});
+  await prisma.tag.deleteMany({});
+  await prisma.teamMember.deleteMany({});
+  await prisma.team.deleteMany({});
+  await prisma.alert.deleteMany({});
+  await prisma.train.deleteMany({});
+  await prisma.station.deleteMany({});
+  await prisma.user.deleteMany({});
+
+  console.log("✅ Cleared existing data");
+
   // Create users
   const user1 = await prisma.user.create({
     data: {
       email: "john.doe@example.com",
       name: "John Doe",
+      password: "$2a$10$YourHashedPasswordHere",
       phone: "+1234567890",
       role: "PROJECT_MANAGER",
     },
@@ -19,6 +39,7 @@ async function main() {
     data: {
       email: "jane.smith@example.com",
       name: "Jane Smith",
+      password: "$2a$10$YourHashedPasswordHere",
       phone: "+0987654321",
       role: "TEAM_LEAD",
     },
@@ -28,6 +49,7 @@ async function main() {
     data: {
       email: "bob.wilson@example.com",
       name: "Bob Wilson",
+      password: "$2a$10$YourHashedPasswordHere",
       role: "USER",
     },
   });
@@ -36,6 +58,7 @@ async function main() {
     data: {
       email: "alice.johnson@example.com",
       name: "Alice Johnson",
+      password: "$2a$10$YourHashedPasswordHere",
       role: "USER",
     },
   });
@@ -111,10 +134,7 @@ async function main() {
       createdBy: user1.id,
       teamId: team1.id,
       tags: {
-        create: [
-          { tagId: tag2.id },
-          { tagId: tag3.id },
-        ],
+        create: [{ tagId: tag2.id }, { tagId: tag3.id }],
       },
     },
   });
@@ -164,10 +184,7 @@ async function main() {
       assignedTo: user4.id,
       dueDate: new Date("2024-02-28"),
       tags: {
-        create: [
-          { tagId: tag2.id },
-          { tagId: tag1.id },
-        ],
+        create: [{ tagId: tag2.id }, { tagId: tag1.id }],
       },
     },
   });
