@@ -1254,7 +1254,7 @@ All validation scenarios tested and verified:
 **Last Updated**: December 17, 2025
 
 
-Authentication APIs (Signup / Login)
+## Authentication APIs (Signup / Login)
 
 This project uses a secure authentication system to manage user access. The authentication flow is implemented using Next.js API routes, Prisma, bcrypt, JWT, and Zod for validation.
 
