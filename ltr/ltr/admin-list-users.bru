@@ -1,0 +1,36 @@
+meta {
+  name: List All Users
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/admin/users?page=1&limit=10
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+params:query {
+  page: 1
+  limit: 10
+}
+
+docs {
+  ## List All Users (Admin Only)
+  
+  **Access Level:** ADMIN only
+  
+  Returns paginated list of all users with:
+  - User details (id, name, email, role)
+  - Count of projects, tasks, teams, alerts
+  - Pagination metadata
+  
+  **Query Parameters:**
+  - `page` (default: 1)
+  - `limit` (default: 10)
+  - `role` (optional filter: ADMIN, PROJECT_MANAGER, TEAM_LEAD, USER)
+}

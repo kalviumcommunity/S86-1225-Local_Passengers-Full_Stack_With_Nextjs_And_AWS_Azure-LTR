@@ -1,0 +1,31 @@
+meta {
+  name: Admin Dashboard
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/admin
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminToken}}
+}
+
+docs {
+  ## Admin Dashboard
+  
+  **Access Level:** ADMIN only
+  
+  Returns system statistics including:
+  - Total users, projects, teams, tasks
+  - Train and alert counts
+  - Recent activity
+  
+  **Test Cases:**
+  - ✅ With admin token: Should return 200 with dashboard data
+  - ❌ With user token: Should return 403 Forbidden
+  - ❌ Without token: Should return 401 Unauthorized
+}
