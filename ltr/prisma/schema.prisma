@@ -35,6 +35,7 @@ model User {
   notifications   Notification[]
   alerts          Alert[]
   managedTrains   Train[]   @relation("StationMasterTrains")
+  uploadedFiles   File[]    @relation("UploadedFiles")
 
   @@index([email])
   @@index([role])
@@ -320,4 +321,22 @@ model Train {
   @@index([assignedStationId])
   @@index([stationMasterId])
   @@index([status])
+}
+
+// File model - represents uploaded files in cloud storage
+model File {
+  id              Int       @id @default(autoincrement())
+  fileName        String
+  fileUrl         String
+  fileType        String
+  fileSize        Int       // size in bytes
+  uploadedBy      Int?
+  uploader        User?     @relation("UploadedFiles", fields: [uploadedBy], references: [id], onDelete: SetNull)
+  isPublic        Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([uploadedBy])
+  @@index([fileType])
+  @@index([createdAt])
 }

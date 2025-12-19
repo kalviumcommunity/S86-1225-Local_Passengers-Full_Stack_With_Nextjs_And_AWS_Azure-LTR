@@ -1,0 +1,48 @@
+meta {
+  name: Upload - Generate Pre-signed URL
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/upload
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "fileName": "test-image.jpg",
+    "fileType": "image/jpeg",
+    "fileSize": 102400
+  }
+}
+
+docs {
+  # Generate Pre-signed URL for File Upload
+  
+  This endpoint generates a temporary pre-signed URL that allows direct file upload to AWS S3.
+  
+  ## Request Body
+  - `fileName`: Name of the file to upload (e.g., "profile-pic.jpg")
+  - `fileType`: MIME type of the file (e.g., "image/jpeg", "application/pdf")
+  - `fileSize`: Size of the file in bytes (max 10MB = 10485760 bytes)
+  
+  ## Allowed File Types
+  - Images: image/jpeg, image/jpg, image/png, image/gif, image/webp
+  - Documents: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document
+  
+  ## Response
+  - `uploadUrl`: Temporary URL to upload the file (expires in 60 seconds)
+  - `fileKey`: Unique identifier for the file in S3
+  - `publicUrl`: Public URL to access the file after upload
+  - `expiresIn`: Time in seconds until the URL expires
+  
+  ## Next Steps
+  1. Use the `uploadUrl` to PUT the file directly to S3
+  2. After successful upload, call POST /api/files to store metadata
+}

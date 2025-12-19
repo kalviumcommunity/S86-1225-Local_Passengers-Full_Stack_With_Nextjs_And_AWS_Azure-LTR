@@ -19,6 +19,8 @@ const protectedRoutes = {
     "/api/alerts",
     "/api/trains",
     "/api/reroutes",
+    "/api/upload",
+    "/api/files",
   ],
 };
 
@@ -132,14 +134,12 @@ export const config = {
 export const config = {
   matcher: [
     "/api/admin/:path*",
+    "/api/station-master/:path*",
     "/api/users/:path*",
-    "/api/projects/:path*",
-    "/api/tasks/:path*",
-    "/api/teams/:path*",
     "/api/alerts/:path*",
     "/api/trains/:path*",
     "/api/reroutes/:path*",
-    "/api/transactions/:path*",
-    "/api/query-optimization/:path*",
+    "/api/upload/:path*",
+    "/api/files/:path*",
   ],
 };

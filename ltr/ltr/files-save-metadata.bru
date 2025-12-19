@@ -1,0 +1,45 @@
+meta {
+  name: Files - Save Metadata
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/files
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+body:json {
+  {
+    "fileName": "test-image.jpg",
+    "fileUrl": "https://your-bucket.s3.ap-south-1.amazonaws.com/uploads/1/1734567890-test-image.jpg",
+    "fileType": "image/jpeg",
+    "fileSize": 102400,
+    "isPublic": true
+  }
+}
+
+docs {
+  # Save File Metadata
+  
+  After successfully uploading a file to S3 using the pre-signed URL, call this endpoint to store the file metadata in the database.
+  
+  ## Request Body
+  - `fileName`: Name of the uploaded file
+  - `fileUrl`: Public URL of the file (from the previous step)
+  - `fileType`: MIME type of the file
+  - `fileSize`: Size of the file in bytes
+  - `isPublic`: (optional) Whether the file is publicly accessible (default: false)
+  
+  ## Response
+  Returns the created file record with uploader information.
+  
+  ## Access Control
+  - Users can only save files they uploaded themselves
+  - File records are automatically associated with the authenticated user
+}
