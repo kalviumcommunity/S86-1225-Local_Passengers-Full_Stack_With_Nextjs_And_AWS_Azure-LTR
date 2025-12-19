@@ -916,9 +916,311 @@ ltr/
 - **Validation**: Zod 4
 - **Authentication**: JWT (jsonwebtoken)
 - **Password Hashing**: bcryptjs
+- **Cloud Storage**: AWS S3 (with pre-signed URLs)
 - **Styling**: Tailwind CSS 4
 - **TypeScript**: TypeScript 5
 - **Code Quality**: ESLint, Prettier, Husky, lint-staged
+
+## 📁 File Upload Feature with AWS S3
+
+This application implements secure file uploads using AWS S3 pre-signed URLs, allowing direct client-to-cloud uploads without exposing credentials.
+
+### Why Pre-Signed URLs?
+
+| Advantage | Description |
+|-----------|-------------|
+| **Security** | Credentials remain hidden; uploads go directly to cloud storage |
+| **Scalability** | Backend only generates URLs, not handling large file streams |
+| **Performance** | Upload latency decreases as files bypass the app server |
+
+### Setup AWS S3
+
+1. **Create an S3 Bucket**
+   - Go to AWS Console → S3
+   - Create a new bucket with a unique name
+   - Configure CORS settings:
+   ```json
+   [
+     {
+       "AllowedHeaders": ["*"],
+       "AllowedMethods": ["GET", "PUT", "POST", "DELETE"],
+       "AllowedOrigins": ["*"],
+       "ExposeHeaders": ["ETag"]
+     }
+   ]
+   ```
+
+2. **Create IAM User**
+   - Go to IAM → Users → Create User
+   - Attach policy: `AmazonS3FullAccess` (or create a custom policy with s3:PutObject permission)
+   - Generate Access Key and Secret Key
+
+3. **Configure Environment Variables**
+   Add to your `.env` file:
+   ```env
+   AWS_ACCESS_KEY_ID="your-access-key-id"
+   AWS_SECRET_ACCESS_KEY="your-secret-access-key"
+   AWS_REGION="ap-south-1"
+   AWS_BUCKET_NAME="your-bucket-name"
+   ```
+
+### File Upload Flow
+
+```
+┌─────────┐     1. Request Pre-signed URL      ┌─────────┐
+│         │ ──────────────────────────────────> │         │
+│ Client  │                                     │  API    │
+│         │ <────────────────────────────────── │         │
+└─────────┘     2. Receive Upload URL          └─────────┘
+     │                                                │
+     │ 3. Upload File Directly                       │
+     │                                                │
+     ▼                                                │
+┌─────────┐                                          │
+│   S3    │                                          │
+│ Bucket  │                                          │
+└─────────┘                                          │
+     │                                                │
+     │          4. Store File Metadata               │
+     └──────────────────────────────────────────────>│
+```
+
+### API Endpoints
+
+#### 1. Generate Pre-Signed URL
+**POST** `/api/upload`
+
+Request:
+```json
+{
+  "fileName": "profile-picture.jpg",
+  "fileType": "image/jpeg",
+  "fileSize": 1024000
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Pre-signed URL generated successfully",
+  "data": {
+    "uploadUrl": "https://s3.amazonaws.com/...",
+    "fileKey": "uploads/123/1734567890-profile-picture.jpg",
+    "publicUrl": "https://your-bucket.s3.ap-south-1.amazonaws.com/...",
+    "expiresIn": 60
+  }
+}
+```
+
+#### 2. Store File Metadata
+**POST** `/api/files`
+
+Request:
+```json
+{
+  "fileName": "profile-picture.jpg",
+  "fileUrl": "https://your-bucket.s3.amazonaws.com/uploads/...",
+  "fileType": "image/jpeg",
+  "fileSize": 1024000,
+  "isPublic": true
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "File metadata saved successfully",
+  "data": {
+    "id": 1,
+    "fileName": "profile-picture.jpg",
+    "fileUrl": "https://...",
+    "fileType": "image/jpeg",
+    "fileSize": 1024000,
+    "uploadedBy": 1,
+    "isPublic": true,
+    "createdAt": "2024-12-19T...",
+    "uploader": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com"
+    }
+  }
+}
+```
+
+#### 3. Get All Files
+**GET** `/api/files?limit=50&offset=0&fileType=image`
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Files retrieved successfully",
+  "data": {
+    "files": [...],
+    "pagination": {
+      "total": 100,
+      "limit": 50,
+      "offset": 0,
+      "hasMore": true
+    }
+  }
+}
+```
+
+#### 4. Get Single File
+**GET** `/api/files/:id`
+
+#### 5. Delete File
+**DELETE** `/api/files/:id`
+
+### File Upload Example (Client-Side)
+
+```javascript
+async function uploadFile(file) {
+  try {
+    // 1. Get pre-signed URL
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size
+      })
+    });
+
+    const { data } = await response.json();
+    const { uploadUrl, publicUrl } = data;
+
+    // 2. Upload file directly to S3
+    await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': file.type
+      },
+      body: file
+    });
+
+    // 3. Store file metadata in database
+    const metadataResponse = await fetch('/api/files', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileUrl: publicUrl,
+        fileType: file.type,
+        fileSize: file.size,
+        isPublic: true
+      })
+    });
+
+    const result = await metadataResponse.json();
+    console.log('File uploaded successfully!', result);
+  } catch (error) {
+    console.error('Upload failed:', error);
+  }
+}
+```
+
+### Supported File Types
+
+- **Images**: JPEG, JPG, PNG, GIF, WebP
+- **Documents**: PDF, DOC, DOCX, XLS, XLSX
+
+**Max File Size**: 10MB (configurable in [route.ts](src/app/api/upload/route.ts))
+
+### Security Features
+
+1. **Authentication Required**: All upload endpoints require valid JWT token
+2. **File Type Validation**: Only allowed file types can be uploaded
+3. **File Size Validation**: Files exceeding max size are rejected
+4. **Temporary URLs**: Pre-signed URLs expire in 60 seconds
+5. **User Isolation**: Files are organized by user ID in S3
+6. **Access Control**: Users can only access their own files (unless public or admin)
+
+### Testing with Postman
+
+1. **Get Pre-Signed URL**
+   ```
+   POST http://localhost:5174/api/upload
+   Headers:
+     Authorization: Bearer YOUR_JWT_TOKEN
+     Content-Type: application/json
+   Body:
+   {
+     "fileName": "test.jpg",
+     "fileType": "image/jpeg",
+     "fileSize": 50000
+   }
+   ```
+
+2. **Upload File to S3**
+   ```
+   PUT {uploadUrl from step 1}
+   Headers:
+     Content-Type: image/jpeg
+   Body: (binary file)
+   ```
+
+3. **Save Metadata**
+   ```
+   POST http://localhost:5174/api/files
+   Headers:
+     Authorization: Bearer YOUR_JWT_TOKEN
+     Content-Type: application/json
+   Body:
+   {
+     "fileName": "test.jpg",
+     "fileUrl": "{publicUrl from step 1}",
+     "fileType": "image/jpeg",
+     "fileSize": 50000,
+     "isPublic": true
+   }
+   ```
+
+### S3 Lifecycle Policies (Optional)
+
+Configure automatic file deletion or archival:
+
+1. Go to S3 Bucket → Management → Lifecycle rules
+2. Create rule:
+   - **Rule name**: Delete old uploads
+   - **Prefix**: uploads/
+   - **Expiration**: Delete after 30 days (or your preference)
+
+### Troubleshooting
+
+**Error: AWS_NOT_CONFIGURED**
+- Ensure AWS credentials are set in `.env`
+- Verify bucket exists and region is correct
+
+**Error: 403 Forbidden on S3 Upload**
+- Check S3 bucket CORS configuration
+- Verify IAM user has s3:PutObject permission
+
+**Error: Pre-signed URL Expired**
+- URLs expire in 60 seconds
+- Generate a new URL and upload immediately
+
+**Error: File Already Exists**
+- File keys include timestamp to prevent collisions
+- Check if filename has invalid characters
+
+### Cost Optimization
+
+1. **Use Lifecycle Policies**: Automatically delete old files
+2. **Enable S3 Transfer Acceleration**: For faster uploads (additional cost)
+3. **Use CloudFront CDN**: For frequently accessed files
+4. **Monitor Storage**: Set up CloudWatch alerts for storage usage
 
 ## 📚 Documentation
 

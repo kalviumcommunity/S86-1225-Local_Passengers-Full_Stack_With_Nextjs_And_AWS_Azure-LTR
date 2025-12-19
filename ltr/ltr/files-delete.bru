@@ -1,0 +1,41 @@
+meta {
+  name: Files - Delete File
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{base_url}}/api/files/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{auth_token}}
+}
+
+docs {
+  # Delete File Record
+  
+  Delete a file record from the database.
+  
+  **Note:** This only deletes the database record, not the physical file in S3.
+  
+  ## Path Parameters
+  - `id`: File ID (numeric)
+  
+  ## Access Control
+  - Users can delete their own files
+  - Admins can delete any file
+  - Returns 403 if user doesn't have permission
+  
+  ## Response
+  Returns success message with the deleted file ID.
+  
+  ## Important
+  To completely remove a file, you need to:
+  1. Delete the database record (this endpoint)
+  2. Manually delete from S3 (via AWS Console or S3 API)
+  
+  Consider implementing S3 lifecycle policies to automatically delete old files.
+}
