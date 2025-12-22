@@ -1223,12 +1223,7 @@ All validation errors return structured responses with:
 - Uniform error response format across all endpoints
 - Predictable API behavior
 
-### Testing
 
-Complete testing documentation with examples available in:
-- **[ltr/VALIDATION_TESTING.md](./ltr/VALIDATION_TESTING.md)** - Comprehensive test cases with passing and failing scenarios
-- **[ltr/QUICKSTART_TESTING.md](./ltr/QUICKSTART_TESTING.md)** - Quick commands to verify implementation
-- **[ltr/ZOD_IMPLEMENTATION_SUMMARY.md](./ltr/ZOD_IMPLEMENTATION_SUMMARY.md)** - Complete implementation details
 
 ### Verification Checklist
 
@@ -1242,12 +1237,7 @@ All validation scenarios tested and verified:
 - ✅ Multiple validation errors shown together
 - ✅ Consistent error response format
 
-### Resources
 
-- [Zod Official Documentation](https://zod.dev)
-- [Next.js API Route Handlers](https://nextjs.org/docs/app/building-your-application/routing/route-handlers)
-
----
 
 **Project**: Local Train Passengers Management System  
 **Author**: Kalvium Student  
@@ -1292,12 +1282,6 @@ The application implements comprehensive **Role-Based Access Control (RBAC)** wi
 - ✅ User context injection for route handlers
 - ✅ Graceful error handling with proper HTTP status codes
 
-**Documentation:**
-For comprehensive authorization details, see:
-- **[ltr/README.md - Authorization Section](./ltr/README.md#-authorization--authentication)** - Full implementation guide
-- **[ltr/AUTHORIZATION_TESTING.md](./ltr/AUTHORIZATION_TESTING.md)** - Testing scenarios and examples
-- **[ltr/AUTHORIZATION_IMPLEMENTATION_SUMMARY.md](./ltr/AUTHORIZATION_IMPLEMENTATION_SUMMARY.md)** - Implementation summary
-- **[ltr/AUTHORIZATION_FLOW_DIAGRAMS.md](./ltr/AUTHORIZATION_FLOW_DIAGRAMS.md)** - Visual flow diagrams
 
 The middleware checks for a valid JWT token in:
 
@@ -1336,14 +1320,3 @@ Login with correct and incorrect credentials
 
 Accessing protected routes with and without JWT token
 
-📌 Summary
-
-Secure password handling using bcrypt
-
-Token-based authentication using JWT
-
-Authorization middleware for protected routes
-
-Input validation using Zod schemas
-
-This setup provides a secure and scalable authentication system for the LocalPassengers application.
