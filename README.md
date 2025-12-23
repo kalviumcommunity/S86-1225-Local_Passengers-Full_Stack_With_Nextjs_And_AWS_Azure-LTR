@@ -398,6 +398,172 @@ docker-compose --version
 docker-compose down
 ```
 - Stops and removes containers
+
+---
+
+## Transactional Email Integration (SES / SendGrid)
+
+Transactional emails are essential for LocalPassengers to keep commuters informed about saved trains, delays, platform changes, reroutes, and security alerts.
+
+### Why Transactional Emails Matter
+
+- **Critical updates:** notify users about delays or alternate routes.
+- **Security:** password resets and account alerts.
+- **Trust:** confirmation emails (signup, bookings) improve user confidence.
+
+### Choosing a Provider
+
+Feature | AWS SES | SendGrid
+:---|:---:|:---:
+Pricing | Pay-per-email | Free tier (100/day) + paid plans
+Setup | Domain/email verification, IAM | API key, sender verification
+Best for | Backend automation, tight AWS integration | Rapid development, easy API
+
+### Environment Variables
+
+Add one of the following to your `.env.local` for SES:
+
+```
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=ap-south-1
+SES_EMAIL_SENDER=no-reply@yourdomain.com
+```
+
+Or for SendGrid:
+
+```
+SENDGRID_API_KEY=your-api-key
+SENDGRID_SENDER=no-reply@yourdomain.com
+```
+
+### Install SDKs
+
+```
+npm install @aws-sdk/client-ses
+npm install @sendgrid/mail
+```
+
+### Example Next.js API Route (app/api/email/route.ts)
+
+Option A — AWS SES
+
+```ts
+import { NextResponse } from "next/server";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+
+const ses = new SESClient({ region: process.env.AWS_REGION });
+
+export async function POST(req: Request) {
+  try {
+    const { to, subject, message } = await req.json();
+
+    const params = {
+      Destination: { ToAddresses: [to] },
+      Message: {
+        Body: { Html: { Charset: "UTF-8", Data: message } },
+        Subject: { Charset: "UTF-8", Data: subject },
+      },
+      Source: process.env.SES_EMAIL_SENDER!,
+    };
+
+    const response = await ses.send(new SendEmailCommand(params));
+    console.log("Email sent:", response.MessageId);
+    return NextResponse.json({ success: true, messageId: response.MessageId });
+  } catch (error) {
+    console.error("Email send failed:", error);
+    return NextResponse.json({ success: false, error }, { status: 500 });
+  }
+}
+```
+
+Option B — SendGrid
+
+```ts
+import { NextResponse } from "next/server";
+import sendgrid from "@sendgrid/mail";
+
+sendgrid.setApiKey(process.env.SENDGRID_API_KEY!);
+
+export async function POST(req: Request) {
+  try {
+    const { to, subject, message } = await req.json();
+
+    const emailData = { to, from: process.env.SENDGRID_SENDER!, subject, html: message };
+    const response = await sendgrid.send(emailData);
+    console.log("Email sent headers:", response[0]?.headers || response);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Email send failed:", error);
+    return NextResponse.json({ success: false, error }, { status: 500 });
+  }
+}
+```
+
+### Reusable HTML Template
+
+```ts
+export const welcomeTemplate = (userName: string) => `
+  <h2>Welcome to LocalPassengers, ${userName}!</h2>
+  <p>We’re thrilled to have you onboard 🎉</p>
+  <p>Save trains to get real-time delay and reroute alerts.</p>
+  <hr/>
+  <small>This is an automated email. Please do not reply.</small>
+`;
+```
+
+### Testing the Email API
+
+Run locally (Next dev) and test with curl or Postman:
+
+```bash
+curl -X POST http://localhost:3000/api/email \
+  -H "Content-Type: application/json" \
+  -d '{"to":"student@example.com","subject":"Welcome!","message":"<h3>Hello from LocalPassengers 🚀</h3>"}'
+```
+
+Expected response (SES example):
+
+```json
+{ "success": true, "messageId": "01010189b2example123" }
+```
+
+Console log sample:
+
+```
+Email sent: 01010189b2example123
+```
+
+Note: SES sandbox will only deliver to verified addresses.
+
+### Common Issues & Mitigations
+
+- Emails not delivered: check sandbox mode, verify sender and recipient.
+- Rate limits: implement job queue and retry/backoff (BullMQ, AWS SQS).
+- Bounces & complaints: monitor provider dashboards and webhook events.
+- Slow sends: send asynchronously and batch where appropriate.
+
+### Security & Deliverability
+
+- Use domain verification, SPF, DKIM for production senders.
+- Keep API keys/secrets in server-only env files and never expose to client.
+
+### How this helps LocalPassengers
+
+- Notify users who saved trains about delays, platform changes, or reroute suggestions.
+- Automatically send a reroute recommendation when a saved train is canceled or delayed beyond threshold.
+- Send security alerts (password resets, suspicious logins).
+
+### Deliverables Checklist
+
+- [x] README updated with integration guide and examples
+- [ ] Implement API route in `app/api/email/route.ts` (see above snippets)
+- [x] HTML template example included
+- [ ] Capture logs/screenshots when sending from real account (attach here)
+
+---
+
+Pro Tip: Emails are the heartbeat of trust in digital systems — automate them carefully, monitor them consistently, and secure them relentlessly.
 - Networks are destroyed
 - Volumes persist (data remains)
 

@@ -2,98 +2,73 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import {
-  sendValidationError,
-  sendAuthError,
-  sendError,
-} from "@/lib/responseHandler";
-import { ERROR_CODES } from "@/lib/errorCodes";
 import { userLoginSchema } from "@/lib/schemas";
 import { ZodError } from "zod";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-in-production";
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is not defined");
+}
 
-/**
- * POST /api/auth/login
- * Login user
- * Access: Public
- */
+const JWT_SECRET = process.env.JWT_SECRET;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const { email, password } = userLoginSchema.parse(body);
 
-    // Validate input using Zod schema
-    const validatedData = userLoginSchema.parse(body);
-    const { email, password } = validatedData;
-
-    // Find user
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
     if (!user) {
-      return sendAuthError("Invalid email or password");
+      return NextResponse.json(
+        { message: "Invalid credentials" },
+        { status: 401 }
+      );
     }
 
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password);
-
-    if (!isValidPassword) {
-      return sendAuthError("Invalid email or password");
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) {
+      return NextResponse.json(
+        { message: "Invalid credentials" },
+        { status: 401 }
+      );
     }
 
-    // Generate JWT token with role
-    const token = jwt.sign(
-      { 
-        userId: user.id, 
-        email: user.email, 
-        role: user.role 
-      }, 
-      JWT_SECRET, 
-      {
-        expiresIn: "7d",
-      }
-    );
+    const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
-    // Create response with token in cookie
-    const response = NextResponse.json(
-      {
-        message: "Login successful",
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        },
-        token,
+    const response = NextResponse.json({
+      message: "Login successful",
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
       },
-      { status: 200 }
-    );
+    });
 
-    // Set HTTP-only cookie
     response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
     });
 
     return response;
   } catch (error) {
-    // Handle Zod validation errors
     if (error instanceof ZodError) {
-      return sendValidationError(
-        "Validation failed",
-        error.issues.map((e) => ({
-          field: e.path.join("."),
-          message: e.message,
-        }))
+      return NextResponse.json(
+        { message: "Validation failed", errors: error.issues },
+        { status: 400 }
       );
     }
 
-    // eslint-disable-next-line no-console
-    console.error("Login error:", error);
-    return sendError("Failed to login", ERROR_CODES.AUTH_ERROR, 500, error);
+    // Error occurred
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

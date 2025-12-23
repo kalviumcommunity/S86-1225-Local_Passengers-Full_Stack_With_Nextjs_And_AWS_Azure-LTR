@@ -7,13 +7,8 @@ const JWT_SECRET =
 
 // Define protected routes and their required roles for Local Train Passengers System
 const protectedRoutes = {
-  // Admin-only routes (full system access)
   admin: ["/api/admin"],
-  
-  // Station Master routes (train and station management)
   stationMaster: ["/api/station-master"],
-  
-  // Authenticated routes (all logged-in users)
   authenticated: [
     "/api/users",
     "/api/alerts",
@@ -24,31 +19,32 @@ const protectedRoutes = {
   ],
 };
 
-/**
- * Middleware function to handle authorization for Local Train Passengers System
- * Validates JWT tokens and enforces role-based access control (RBAC)
- * Roles: ADMIN (full access), STATION_MASTER (train/station management), USER (basic access)
- */
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Check if the route requires admin access
+  // API-level RBAC handling
   const requiresAdmin = protectedRoutes.admin.some((route) =>
     pathname.startsWith(route)
   );
-
-  // Check if the route requires station master access
   const requiresStationMaster = protectedRoutes.stationMaster.some((route) =>
     pathname.startsWith(route)
   );
-
-  // Check if the route requires authentication
   const requiresAuth = protectedRoutes.authenticated.some((route) =>
     pathname.startsWith(route)
   );
 
-  // Skip middleware for public routes (auth endpoints)
-  if (!requiresAdmin && !requiresStationMaster && !requiresAuth) {
+  // Page-level protected routes for the routing demo
+  const isRoutingDemoProtected =
+    pathname.startsWith("/routing-demo/dashboard") ||
+    pathname.startsWith("/routing-demo/users");
+
+  // If neither API nor routing-demo pages require auth, continue
+  if (
+    !requiresAdmin &&
+    !requiresStationMaster &&
+    !requiresAuth &&
+    !isRoutingDemoProtected
+  ) {
     return NextResponse.next();
   }
 
@@ -58,8 +54,14 @@ export function middleware(req: NextRequest) {
   const tokenFromCookie = req.cookies.get("token")?.value;
   const token = tokenFromHeader || tokenFromCookie;
 
-  // Return 401 if no token is provided
   if (!token) {
+    // If it's a routing-demo page, redirect to the demo login page
+    if (isRoutingDemoProtected) {
+      const loginUrl = new URL("/routing-demo/login", req.url);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Otherwise return JSON 401 for API
     return NextResponse.json(
       {
         success: false,
@@ -71,14 +73,13 @@ export function middleware(req: NextRequest) {
   }
 
   try {
-    // Verify and decode the JWT token
     const decoded = jwt.verify(token, JWT_SECRET) as {
       userId: number;
       email: string;
       role: string;
     };
 
-    // Check if admin access is required
+    // API role checks
     if (requiresAdmin && decoded.role !== "ADMIN") {
       return NextResponse.json(
         {
@@ -90,10 +91,11 @@ export function middleware(req: NextRequest) {
       );
     }
 
-    // Check if station master access is required
-    if (requiresStationMaster && 
-        decoded.role !== "STATION_MASTER" && 
-        decoded.role !== "ADMIN") {
+    if (
+      requiresStationMaster &&
+      decoded.role !== "STATION_MASTER" &&
+      decoded.role !== "ADMIN"
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -104,33 +106,39 @@ export function middleware(req: NextRequest) {
       );
     }
 
-    // Attach user info to request headers for downstream handlers
-    const requestHeaders = new Headers(req.headers);
-    requestHeaders.set("x-user-id", decoded.userId.toString());
-    requestHeaders.set("x-user-email", decoded.email);
-    requestHeaders.set("x-user-role", decoded.role);
+    // For API requests attach user headers
+    if (requiresAdmin || requiresStationMaster || requiresAuth) {
+      const requestHeaders = new Headers(req.headers);
+      requestHeaders.set("x-user-id", decoded.userId.toString());
+      requestHeaders.set("x-user-email", decoded.email);
+      requestHeaders.set("x-user-role", decoded.role);
+      return NextResponse.next({ request: { headers: requestHeaders } });
+    }
 
-    // Allow the request to proceed with updated headers
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    // For routing-demo pages, allow access (no role checks) after successful verification
+    if (isRoutingDemoProtected) {
+      return NextResponse.next();
+    }
+
+    return NextResponse.next();
   } catch (error) {
-    // Handle invalid or expired tokens
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-// Excludes public routes like /api/auth/login, /api/auth/register
-export const config = {
-  matcher: [
-    "/api/admin/:path*",
-    "/api/station-master/:path*",
-    "/api/users/:path*",
-    "/api/alerts/:path*",
-    "/api/trains/:path*",
-    "/api/reroutes
+    // Invalid or expired token
+    if (isRoutingDemoProtected) {
+      const loginUrl = new URL("/routing-demo/login", req.url);
+      return NextResponse.redirect(loginUrl);
+    }
 
-// Configure which routes the middleware should run on
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Invalid or expired token.",
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 401 }
+    );
+  }
+}
+
 export const config = {
   matcher: [
     "/api/admin/:path*",
@@ -141,5 +149,8 @@ export const config = {
     "/api/reroutes/:path*",
     "/api/upload/:path*",
     "/api/files/:path*",
+    // routing demo pages
+    "/routing-demo/dashboard/:path*",
+    "/routing-demo/users/:path*",
   ],
 };
