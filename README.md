@@ -1403,6 +1403,180 @@ All validation scenarios tested and verified:
 - ✅ Multiple validation errors shown together
 - ✅ Consistent error response format
 
+---
+
+## ✅ State Management using Context & Hooks (Assignment 2.28)
+
+### Overview
+
+Global state management has been implemented using **React Context API** and **custom hooks** to handle authentication, UI preferences, and notifications across the entire application. This architecture eliminates prop-drilling and provides a clean, maintainable way to share state between components.
+
+### Why Context and Hooks?
+
+| Concept | Purpose | Example |
+|---------|---------|---------|
+| **Context** | Share data through component tree without props | Logged-in user available everywhere |
+| **Custom Hook** | Encapsulate reusable logic for cleaner components | `useAuth()` handles login, logout, state |
+| **Provider Pattern** | Centralize state management | AuthProvider wraps entire app |
+
+### Folder Structure
+
+```
+ltr/src/
+├── context/
+│   ├── AuthContext.tsx       ← Authentication state
+│   └── UIContext.tsx          ← Theme, sidebar, notifications
+├── hooks/
+│   ├── useAuth.ts             ← Custom auth hook
+│   └── useUI.ts               ← Custom UI hook
+├── app/
+│   ├── layout.tsx             ← Providers wrap app
+│   └── context-demo/
+│       └── page.tsx           ← Demo implementation
+```
+
+---
+
+### Implementation Details
+
+#### 1. **AuthContext** (`src/context/AuthContext.tsx`)
+
+Manages user authentication state globally with persistent login detection.
+
+**Features:**
+- ✅ User login/logout functionality
+- ✅ JWT-based authentication
+- ✅ Persistent session check on app mount
+- ✅ Loading states during auth operations
+- ✅ Type-safe user interface
+
+
+**State Flow:**
+1. App loads → `checkAuth()` verifies existing session
+2. User logs in → `login()` → API call → update state → set user
+3. User logs out → `logout()` → API call → clear state → redirect
+
+---
+
+#### 2. **UIContext** (`src/context/UIContext.tsx`)
+
+Manages UI preferences and notifications with localStorage persistence.
+
+**Features:**
+- ✅ Light/Dark theme toggle with localStorage persistence
+- ✅ Sidebar open/close state
+- ✅ Global notification system with auto-dismiss
+- ✅ Four notification types: info, success, warning, error
+
+
+```
+
+**Notification System:**
+- Auto-dismiss after 5 seconds
+- Visual feedback with color-coded types
+- Stack multiple notifications
+- Manual dismiss option
+
+---
+
+#### 3. **Custom Hooks**
+
+##### `useAuth()` Hook (`src/hooks/useAuth.ts`)
+
+Simplified interface to authentication context.
+
+```typescript
+const { user, isAuthenticated, login, logout, isAdmin } = useAuth();
+```
+
+**Additional computed properties:**
+- `isAdmin` - Check if user has ADMIN role
+- `isStationMaster` - Check if user has STATION_MASTER role
+
+##### `useUI()` Hook (`src/hooks/useUI.ts`)
+
+Convenient access to UI state and helper methods.
+
+```typescript
+const { 
+  theme, 
+  toggleTheme, 
+  isDarkMode,
+  showSuccess, 
+  showError 
+} = useUI();
+
+
+**Helper methods:**
+- `showSuccess(message)` - Quick success notification
+- `showError(message)` - Quick error notification
+- `showInfo(message)` - Quick info notification
+- `showWarning(message)` - Quick warning notification
+
+#### 4. **Global Provider Setup** (`src/app/layout.tsx`)
+
+All contexts are provided at the root level, making state available throughout the app.
+
+```typescript
+<AuthProvider>
+  <UIProvider>
+    <LayoutWrapper>{children}</LayoutWrapper>
+  </UIProvider>
+</AuthProvider>
+```
+
+**Nesting order matters:**
+- AuthProvider is outermost (authentication is fundamental)
+- UIProvider wraps content (depends on auth for certain UI behaviors)
+
+---
+
+### Demo Page
+
+**Location:** `/context-demo`
+
+Interactive demonstration showing all context features:
+
+✅ **Authentication Section:**
+- Login form with email/password
+- Display current user info
+- Logout functionality
+- Admin badge for admin users
+
+✅ **UI Controls Section:**
+- Theme toggle (Light ☀️ / Dark 🌙)
+- Real-time theme display
+- Sidebar toggle demonstration
+
+✅ **Notification Testing:**
+- Four buttons to test each notification type
+- Live notification display in top-right corner
+- Auto-dismiss and manual close
+
+✅ **State Overview:**
+- Real-time context status display
+- Confirmation of active providers
+
+
+### Reflection
+
+**Why This Design Matters:**
+
+**Scalability:** Adding new global state (e.g., shopping cart, user preferences) follows the same pattern - create context, add provider, expose via custom hook.
+
+**Maintainability:** State logic is centralized. Changes to auth flow only require updating AuthContext, not every component.
+
+**Performance:** Context splitting prevents unnecessary re-renders. Only components using specific context re-render when that context changes.
+
+**Developer Productivity:** Custom hooks provide intuitive APIs. New team members can use `useAuth()` without understanding internal implementation.
+
+**Real-world Application:** In LocalPassengers, this architecture enables:
+- User authentication across all pages
+- Theme preference for better accessibility
+- Global notifications for train alerts
+- Sidebar state management without props
+
+
 
 
 **Project**: Local Train Passengers Management System  

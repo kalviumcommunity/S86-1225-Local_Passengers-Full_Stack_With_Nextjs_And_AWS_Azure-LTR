@@ -9,12 +9,18 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 h-screen bg-gray-100 border-r p-4" aria-label="Sidebar">
+    <aside
+      className="w-64 -screen bg-gray-100 border-r p-4"
+      aria-label="Sidebar"
+    >
       <h2 className="text-lg font-bold mb-4">Navigation</h2>
       <ul className="space-y-2">
         {links.map((link) => (
           <li key={link.href}>
-            <Link href={link.href} className="text-gray-700 hover:text-blue-600">
+            <Link
+              href={link.href}
+              className="text-gray-700 hover:text-blue-600"
+            >
               {link.label}
             </Link>
           </li>
