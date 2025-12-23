@@ -8,19 +8,27 @@ if (PROVIDER === "SENDGRID" && process.env.SENDGRID_API_KEY) {
   sendgrid.setApiKey(process.env.SENDGRID_API_KEY);
 }
 
-const ses = process.env.AWS_REGION ? new SESClient({ region: process.env.AWS_REGION }) : undefined;
+const ses = process.env.AWS_REGION
+  ? new SESClient({ region: process.env.AWS_REGION })
+  : undefined;
 
 export async function POST(req: Request) {
   try {
     const { to, subject, message } = await req.json();
 
     if (!to || !subject || !message) {
-      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
     if (PROVIDER === "SES") {
       if (!ses) {
-        return NextResponse.json({ success: false, error: "SES not configured (missing AWS_REGION)" }, { status: 500 });
+        return NextResponse.json(
+          { success: false, error: "SES not configured (missing AWS_REGION)" },
+          { status: 500 }
+        );
       }
 
       const params = {
@@ -33,13 +41,19 @@ export async function POST(req: Request) {
       };
 
       const response = await ses.send(new SendEmailCommand(params));
-      console.log("SES Email sent:", response.MessageId);
-      return NextResponse.json({ success: true, messageId: response.MessageId });
+      // ...existing code...
+      return NextResponse.json({
+        success: true,
+        messageId: response.MessageId,
+      });
     }
 
     // Default: SendGrid
     if (!process.env.SENDGRID_SENDER) {
-      return NextResponse.json({ success: false, error: "SendGrid sender missing" }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "SendGrid sender missing" },
+        { status: 500 }
+      );
     }
 
     const emailData = {
@@ -49,12 +63,14 @@ export async function POST(req: Request) {
       html: message,
     };
 
-    const sgResponse = await sendgrid.send(emailData as any);
-    console.log("SendGrid send response:", sgResponse[0]?.headers || sgResponse);
+    await sendgrid.send(emailData);
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("Email send failed:", err);
+    // ...existing code...
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: message },
+      { status: 500 }
+    );
   }
 }

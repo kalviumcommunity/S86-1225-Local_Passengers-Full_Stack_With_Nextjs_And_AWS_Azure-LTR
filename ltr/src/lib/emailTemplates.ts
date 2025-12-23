@@ -9,12 +9,16 @@ export const welcomeTemplate = (userName: string) => `
   </div>
 `;
 
-export const rerouteTemplate = (userName: string, originalTrain: string, alternatives: {train: string; depart: string; notes?: string}[]) => `
+export const rerouteTemplate = (
+  userName: string,
+  originalTrain: string,
+  alternatives: { train: string; depart: string; notes?: string }[]
+) => `
   <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.4;color:#111">
     <h3>Hi ${userName}, important update for ${originalTrain}</h3>
     <p>We detected a delay for your saved train <strong>${originalTrain}</strong>. Here are suggested alternatives:</p>
     <ul>
-      ${alternatives.map(a => `<li><strong>${a.train}</strong> — departs ${a.depart} ${a.notes ? `(${a.notes})` : ""}</li>`).join("")}
+      ${alternatives.map((a) => `<li><strong>${a.train}</strong> — departs ${a.depart} ${a.notes ? `(${a.notes})` : ""}</li>`).join("")}
     </ul>
     <p>If you want us to automatically switch alerts to one of these alternatives, update your preferences in the dashboard.</p>
     <hr/>

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
+const JWT_SECRET =
+  process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
 // Define protected routes and their required roles for Local Train Passengers System
 const protectedRoutes = {
@@ -22,15 +23,28 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // API-level RBAC handling
-  const requiresAdmin = protectedRoutes.admin.some((route) => pathname.startsWith(route));
-  const requiresStationMaster = protectedRoutes.stationMaster.some((route) => pathname.startsWith(route));
-  const requiresAuth = protectedRoutes.authenticated.some((route) => pathname.startsWith(route));
+  const requiresAdmin = protectedRoutes.admin.some((route) =>
+    pathname.startsWith(route)
+  );
+  const requiresStationMaster = protectedRoutes.stationMaster.some((route) =>
+    pathname.startsWith(route)
+  );
+  const requiresAuth = protectedRoutes.authenticated.some((route) =>
+    pathname.startsWith(route)
+  );
 
   // Page-level protected routes for the routing demo
-  const isRoutingDemoProtected = pathname.startsWith("/routing-demo/dashboard") || pathname.startsWith("/routing-demo/users");
+  const isRoutingDemoProtected =
+    pathname.startsWith("/routing-demo/dashboard") ||
+    pathname.startsWith("/routing-demo/users");
 
   // If neither API nor routing-demo pages require auth, continue
-  if (!requiresAdmin && !requiresStationMaster && !requiresAuth && !isRoutingDemoProtected) {
+  if (
+    !requiresAdmin &&
+    !requiresStationMaster &&
+    !requiresAuth &&
+    !isRoutingDemoProtected
+  ) {
     return NextResponse.next();
   }
 
@@ -48,19 +62,48 @@ export function middleware(req: NextRequest) {
     }
 
     // Otherwise return JSON 401 for API
-    return NextResponse.json({ success: false, message: "Authentication required. Token missing.", errorCode: "AUTH_TOKEN_MISSING" }, { status: 401 });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Authentication required. Token missing.",
+        errorCode: "AUTH_TOKEN_MISSING",
+      },
+      { status: 401 }
+    );
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; email: string; role: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: number;
+      email: string;
+      role: string;
+    };
 
     // API role checks
     if (requiresAdmin && decoded.role !== "ADMIN") {
-      return NextResponse.json({ success: false, message: "Access denied. Admin privileges required.", errorCode: "FORBIDDEN_ACCESS" }, { status: 403 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Access denied. Admin privileges required.",
+          errorCode: "FORBIDDEN_ACCESS",
+        },
+        { status: 403 }
+      );
     }
 
-    if (requiresStationMaster && decoded.role !== "STATION_MASTER" && decoded.role !== "ADMIN") {
-      return NextResponse.json({ success: false, message: "Access denied. Station Master privileges required.", errorCode: "FORBIDDEN_STATION_MASTER" }, { status: 403 });
+    if (
+      requiresStationMaster &&
+      decoded.role !== "STATION_MASTER" &&
+      decoded.role !== "ADMIN"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Access denied. Station Master privileges required.",
+          errorCode: "FORBIDDEN_STATION_MASTER",
+        },
+        { status: 403 }
+      );
     }
 
     // For API requests attach user headers
@@ -85,7 +128,14 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    return NextResponse.json({ success: false, message: "Invalid or expired token.", error: error instanceof Error ? error.message : String(error) }, { status: 401 });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Invalid or expired token.",
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 401 }
+    );
   }
 }
 

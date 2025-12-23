@@ -9,7 +9,14 @@ export default function DashboardPage() {
   }
 
   return (
-    <main style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 40 }}>
+    <main
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        marginTop: 40,
+      }}
+    >
       <h1>Dashboard (Protected)</h1>
       <p>Only authenticated users should reach this page.</p>
     </main>

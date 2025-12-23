@@ -24,8 +24,8 @@ export default function LoginPage() {
       } else {
         alert("Login failed");
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // Error occurred
       alert("Login error");
     } finally {
       setLoading(false);
@@ -34,10 +34,26 @@ export default function LoginPage() {
 
   return (
     <main style={{ display: "flex", justifyContent: "center", marginTop: 40 }}>
-      <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 12, width: 320 }}>
+      <form
+        onSubmit={handleLogin}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          width: 320,
+        }}
+      >
         <h2>Login (demo)</h2>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
-        <button type="submit" disabled={loading} style={{ padding: 8, background: "#0b5fff", color: "white" }}>
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          style={{ padding: 8, background: "#0b5fff", color: "white" }}
+        >
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
