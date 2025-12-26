@@ -476,6 +476,41 @@ Evidence
 Reflection
 - Adding clear, accessible feedback drastically improves perceived reliability for commuters choosing alternate trains or deciding to wait. Toasts give quick reassurance, modals protect critical actions, and loaders set expectations during network delays — all crucial in time-sensitive commuter flows.
 
+---
+
+## Loading Skeletons & Error Boundaries
+
+To improve resilience and user confidence during network delays we added route-level loading skeletons and error boundaries in the App Router.
+
+What was added
+- **Loading skeleton:** `ltr/src/app/context-demo/users/loading.tsx` — shows an `animate-pulse` skeleton while the server route is fetching data.
+- **Error boundary:** `ltr/src/app/context-demo/users/error.tsx` — client-side error fallback with a `Try Again` button that calls `reset()` to re-render the route.
+- **Server demo route:** `ltr/src/app/context-demo/users/page.tsx` — simulates a delayed fetch and supports `?error=1` to simulate failures.
+
+How to test locally
+1. Start the app:
+
+```bash
+cd ltr
+npm install
+npm run dev
+```
+
+2. Visit the demo route:
+
+- http://localhost:5174/context-demo/users — shows the skeleton while fetching simulated data.
+- http://localhost:5174/context-demo/users?error=1 — forces a simulated fetch error and triggers the error boundary UI.
+
+Capture screenshots of the loading skeleton, the error fallback, and a successful load to include as evidence in the repo (place under `ltr/screenshots/`).
+
+Design notes
+- Skeletons provide a layout preview and reduce perceived latency compared to generic spinners.
+- Error boundaries should display actionable next steps (retry, navigate back) and avoid exposing sensitive error details.
+
+Reflection
+- Adding predictable loading and error states increases user trust. For LocalPassengers, where commuters must make timely decisions, clear feedback during network delays prevents confusion and improves decision quality.
+
+
 
 ---
 
