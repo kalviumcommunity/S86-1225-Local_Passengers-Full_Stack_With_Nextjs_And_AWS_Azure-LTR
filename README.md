@@ -240,6 +240,37 @@ All packages have been installed and configured:
    - Formats your code with Prettier
    - Fixes auto-fixable ESLint issues
    - Prevents commit if there are remaining violations
+---
+
+## Tailwind Responsive Layout & Theme
+
+We added a Tailwind configuration and demo pages to illustrate responsive design and theme-aware UI.
+
+- **Tailwind config:** `ltr/tailwind.config.cjs` sets `darkMode: 'class'`, custom `brand` colors, and breakpoints `sm/640`, `md/768`, `lg/1024`, `xl/1280`.
+- **CSS entry:** `ltr/src/app/globals.css` uses `@tailwind base; @tailwind components; @tailwind utilities;` and keeps theme CSS variables for graceful theming.
+- **Demo page:** open `/context-demo/responsive-demo` in the running app to view responsive grid cards and a theme toggle that uses the existing `UIContext`.
+
+Implementation notes
+- The `UIContext` provides `theme` and `toggleTheme()` already; the theme is persisted to `localStorage` and toggles the `dark` class on `document.documentElement`, which works with Tailwind's `class`-based dark mode.
+- Use Tailwind utility classes with `dark:` variants, e.g., `bg-white dark:bg-gray-800`.
+
+How to test
+1. Start the app:
+
+```bash
+cd ltr
+npm install
+npm run dev
+```
+
+2. Visit:
+- http://localhost:5174/context-demo/responsive-demo — responsive + theme toggle demo
+- http://localhost:5174/context-demo/feedback-demo — feedback flow demo (toasts, modal, loader)
+
+Accessibility & reflections
+- Using `darkMode: 'class'` keeps control in JavaScript (good for persisted preference). Ensure color contrast for both themes; test with contrast checkers and different devices.
+- Breakpoints were chosen to match common device widths and are adjustable per product design.
+
 3. **Manual Check**: Run `npm run lint` to check for linting issues
 
 ### Benefits for Team Consistency
