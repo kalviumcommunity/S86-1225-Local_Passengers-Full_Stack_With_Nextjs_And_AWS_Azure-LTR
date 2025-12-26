@@ -103,9 +103,9 @@ export function verifyRefreshToken(token: string): JWTPayload | null {
  * @param token - JWT token to decode
  * @returns Decoded token or null
  */
-export function decodeToken(token: string): unknown {
+export function decodeToken(token: string): { exp?: number } | null {
   try {
-    return jwt.decode(token);
+    return jwt.decode(token) as { exp?: number } | null;
   } catch {
     return null;
   }
