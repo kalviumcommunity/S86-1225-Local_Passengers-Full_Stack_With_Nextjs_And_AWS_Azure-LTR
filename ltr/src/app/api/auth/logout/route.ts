@@ -1,32 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clearAuthCookies } from "@/lib/tokenStorage";
 
 /**
  * POST /api/auth/logout
- * Logout user
- * Access: Authenticated User
+ * Logout user and clear authentication tokens
+ *
+ * Security:
+ * - Clears both access and refresh token cookies
+ * - Invalidates session on client side
+ * - Sets cookies with maxAge=0 to expire immediately
+ *
+ * Access: Any user (authenticated or not)
  */
 export async function POST(_req: NextRequest) {
   try {
     // Create response
     const response = NextResponse.json(
-      { message: "Logout successful" },
+      {
+        success: true,
+        message: "Logout successful",
+      },
       { status: 200 }
     );
 
-    // Clear the token cookie
-    response.cookies.set("token", "", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 0, // Expire immediately
-    });
+    // Clear both access and refresh token cookies
+    clearAuthCookies(response);
 
     return response;
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("Logout error:", error);
+  } catch {
+    // Error occurred during logout
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        success: false,
+        error: "Internal server error",
+      },
       { status: 500 }
     );
   }

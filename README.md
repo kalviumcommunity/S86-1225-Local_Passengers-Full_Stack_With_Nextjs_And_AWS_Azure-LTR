@@ -1723,7 +1723,423 @@ On successful login, a JWT token is generated.
 
 The token is stored securely in an HTTP-only cookie.
 
-🛡️ Authorization Middleware
+---
+
+## 🔐 Secure JWT & Session Management
+
+This project implements a comprehensive JWT-based authentication system with **access and refresh tokens**, providing secure session management with automatic token rotation and protection against common security threats.
+
+### JWT Structure
+
+JSON Web Tokens (JWT) in this project consist of three parts separated by dots:
+
+```
+header.payload.signature
+```
+
+**Example Decoded Structure:**
+```json
+{
+  "header": {
+    "alg": "HS256",
+    "typ": "JWT"
+  },
+  "payload": {
+    "userId": 123,
+    "email": "user@example.com",
+    "role": "USER",
+    "iat": 1735200000,
+    "exp": 1735200900
+  },
+  "signature": "HMACSHA256(base64UrlEncode(header) + '.' + base64UrlEncode(payload), secret)"
+}
+```
+
+**Components:**
+- **Header**: Specifies the algorithm (HS256) and token type (JWT)
+- **Payload**: Contains user claims (userId, email, role) and timestamps (iat=issued at, exp=expiry)
+- **Signature**: HMAC-SHA256 hash that ensures token integrity and authenticity
+
+> ⚠️ **Security Note**: JWTs are encoded (Base64), not encrypted. Never store sensitive data like passwords in the payload.
+
+---
+
+### Access & Refresh Token Architecture
+
+Our system uses a **dual-token approach** for enhanced security and user experience:
+
+| Token Type | Lifespan | Purpose | Storage Location | Use Case |
+|------------|----------|---------|------------------|----------|
+| **Access Token** | 15 minutes | API authentication | HTTP-only cookie (strict) | Short-lived, used for every API request |
+| **Refresh Token** | 7 days | Generate new access tokens | HTTP-only cookie (strict, path=/api/auth/refresh) | Long-lived, used only to refresh access tokens |
+
+**Why Two Tokens?**
+- **Security**: Short-lived access tokens minimize damage from token theft
+- **User Experience**: Long-lived refresh tokens prevent frequent re-logins
+- **Flexibility**: Revoke refresh tokens without affecting active sessions immediately
+
+---
+
+### Token Flow Diagram
+
+```
+┌─────────────┐                                    ┌─────────────┐
+│   Client    │                                    │   Server    │
+└──────┬──────┘                                    └──────┬──────┘
+       │                                                  │
+       │  1. POST /api/auth/login (email, password)     │
+       │ ───────────────────────────────────────────────>│
+       │                                                  │
+       │  2. Validate credentials & generate tokens      │
+       │                     ┌────────────────────────┐  │
+       │                     │ Access Token (15 min)  │  │
+       │                     │ Refresh Token (7 days) │  │
+       │                     └────────────────────────┘  │
+       │<────────────────────────────────────────────────│
+       │  3. Both tokens set as HTTP-only cookies        │
+       │                                                  │
+       │  4. GET /api/trains (with access token)         │
+       │ ───────────────────────────────────────────────>│
+       │                                                  │
+       │  5. Middleware validates access token           │
+       │                     ✅ Valid → Process request  │
+       │<────────────────────────────────────────────────│
+       │  6. Return train data                           │
+       │                                                  │
+       │  ... (15 minutes later) ...                     │
+       │                                                  │
+       │  7. GET /api/alerts (access token expired)      │
+       │ ───────────────────────────────────────────────>│
+       │                                                  │
+       │  8. Middleware detects expired token            │
+       │                     ❌ Expired → Return 401     │
+       │<────────────────────────────────────────────────│
+       │  9. Error: TOKEN_EXPIRED                        │
+       │                                                  │
+       │  10. POST /api/auth/refresh (with refresh token)│
+       │ ───────────────────────────────────────────────>│
+       │                                                  │
+       │  11. Validate refresh token & generate new      │
+       │                     ✅ New Access Token (15 min)│
+       │<────────────────────────────────────────────────│
+       │  12. New access token set in cookie             │
+       │                                                  │
+       │  13. Retry GET /api/alerts (new access token)   │
+       │ ───────────────────────────────────────────────>│
+       │                                                  │
+       │  14. Success ✅ Return alert data               │
+       │<────────────────────────────────────────────────│
+```
+
+---
+
+### Secure Token Storage
+
+**Storage Strategy:**
+
+1. **Access Token**:
+   - Stored as HTTP-only cookie named `accessToken`
+   - Cannot be accessed by JavaScript (XSS protection)
+   - `SameSite=Strict` prevents CSRF attacks
+   - `Secure` flag ensures HTTPS-only in production
+   - `Path=/` (available for all API routes)
+   - `MaxAge=900` (15 minutes)
+
+2. **Refresh Token**:
+   - Stored as HTTP-only cookie named `refreshToken`
+   - More restrictive than access token
+   - `Path=/api/auth/refresh` (only sent to refresh endpoint)
+   - `MaxAge=604800` (7 days)
+   - Prevents unnecessary exposure to other routes
+
+**Cookie Configuration Example:**
+```typescript
+// Access Token Cookie
+{
+  httpOnly: true,        // Not accessible via JavaScript
+  secure: true,          // HTTPS only (production)
+  sameSite: 'strict',    // Strict CSRF protection
+  maxAge: 15 * 60,       // 15 minutes
+  path: '/'              // All routes
+}
+
+// Refresh Token Cookie
+{
+  httpOnly: true,
+  secure: true,
+  sameSite: 'strict',
+  maxAge: 7 * 24 * 60 * 60,  // 7 days
+  path: '/api/auth/refresh'   // Restricted path
+}
+```
+
+**Why Not localStorage/sessionStorage?**
+- ❌ Accessible by JavaScript → Vulnerable to XSS attacks
+- ❌ Sent manually in headers → More error-prone
+- ✅ HTTP-only cookies → Immune to XSS
+- ✅ Automatic cookie handling → Less client-side code
+
+---
+
+### Token Expiry & Rotation Logic
+
+**Automatic Token Refresh Flow:**
+
+1. **Client makes API request** with access token (from cookie)
+2. **Middleware validates token**:
+   - If valid → Process request
+   - If expired → Return 401 with `TOKEN_EXPIRED` error code
+3. **Client detects 401 error** and calls `/api/auth/refresh`
+4. **Server validates refresh token**:
+   - If valid → Generate new access token
+   - If invalid → Return 401 (user must re-login)
+5. **Client retries original request** with new access token
+6. **Success!** User never notices the interruption
+
+**Client-Side Implementation:**
+
+We provide a `fetchWithAuth` utility that handles token refresh automatically:
+
+```typescript
+// src/lib/fetchWithAuth.ts
+import { fetchWithAuth } from '@/lib/fetchWithAuth';
+
+// Automatically handles token refresh on expiry
+const response = await fetchWithAuth('/api/trains');
+const data = await response.json();
+```
+
+**How it works:**
+```typescript
+async function fetchWithAuth(url, options) {
+  let response = await fetch(url, { ...options, credentials: 'include' });
+  
+  if (response.status === 401) {
+    const error = await response.json();
+    
+    if (error.errorCode === 'TOKEN_EXPIRED') {
+      // Refresh token
+      await fetch('/api/auth/refresh', { 
+        method: 'POST', 
+        credentials: 'include' 
+      });
+      
+      // Retry original request
+      response = await fetch(url, { ...options, credentials: 'include' });
+    }
+  }
+  
+  return response;
+}
+```
+
+**Token Rotation (Future Enhancement):**
+- Currently: Refresh token stays same for 7 days
+- Enhanced: Rotate refresh token on each use (sliding window)
+- Benefit: Even stricter security, invalidates old refresh tokens
+
+---
+
+### Security Threat Protection
+
+Our JWT implementation protects against common security vulnerabilities:
+
+| Threat | Description | Mitigation Strategy | Implementation |
+|--------|-------------|---------------------|----------------|
+| **XSS (Cross-Site Scripting)** | Malicious scripts steal tokens from localStorage | ✅ HTTP-only cookies<br/>✅ Input sanitization<br/>✅ CSP headers | Tokens never accessible to JavaScript |
+| **CSRF (Cross-Site Request Forgery)** | Attacker forces authenticated requests from victim's browser | ✅ SameSite=Strict cookies<br/>✅ Origin validation<br/>✅ CSRF tokens (future) | Cookies only sent to same origin |
+| **Token Replay Attack** | Stolen token reused by attacker | ✅ Short token lifespan (15 min)<br/>✅ Token rotation<br/>✅ Refresh token path restriction | Limited damage window |
+| **Man-in-the-Middle (MITM)** | Attacker intercepts tokens over network | ✅ HTTPS only (Secure flag)<br/>✅ HSTS headers | Tokens only transmitted over encrypted connections |
+| **Token Leakage** | Tokens exposed in logs/errors | ✅ Never log token values<br/>✅ Redact in error messages | Server-side token handling only |
+| **Brute Force** | Attacker guesses secret key | ✅ Strong secret (32+ chars)<br/>✅ HS256 algorithm<br/>✅ Separate secrets for access/refresh | Environment-based secrets |
+
+**Additional Security Measures:**
+
+1. **Environment Variables**:
+   ```bash
+   JWT_SECRET=<strong-random-32-char-secret>
+   JWT_REFRESH_SECRET=<different-strong-secret>
+   ```
+   Generate using: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+
+2. **Token Validation**:
+   - Signature verification using HS256
+   - Expiry timestamp validation
+   - User existence verification on refresh
+
+3. **Role-Based Access Control**:
+   - Middleware enforces role requirements
+   - Tokens contain role claims
+   - Admin-only routes protected at middleware level
+
+---
+
+### API Endpoints
+
+#### 1. Login & Token Issuance
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "securepassword"
+}
+
+Response (200 OK):
+{
+  "success": true,
+  "message": "Login successful",
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "USER"
+  },
+  "tokens": {
+    "accessToken": "eyJhbGc...",
+    "expiresIn": "15m"
+  }
+}
+
+Set-Cookie: accessToken=eyJhbGc...; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=900
+Set-Cookie: refreshToken=eyJhbGc...; HttpOnly; Secure; SameSite=Strict; Path=/api/auth/refresh; Max-Age=604800
+```
+
+#### 2. Token Refresh
+```http
+POST /api/auth/refresh
+Cookie: refreshToken=eyJhbGc...
+
+Response (200 OK):
+{
+  "success": true,
+  "message": "Access token refreshed successfully",
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "USER"
+  },
+  "accessToken": "eyJhbGc...",
+  "expiresIn": "15m"
+}
+
+Set-Cookie: accessToken=<new-token>; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=900
+```
+
+#### 3. Logout & Token Invalidation
+```http
+POST /api/auth/logout
+
+Response (200 OK):
+{
+  "success": true,
+  "message": "Logout successful"
+}
+
+Set-Cookie: accessToken=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0
+Set-Cookie: refreshToken=; HttpOnly; Secure; SameSite=Strict; Path=/api/auth/refresh; Max-Age=0
+```
+
+---
+
+### Implementation Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/jwt.ts` | JWT generation, verification, and utility functions |
+| `src/lib/tokenStorage.ts` | Cookie configuration and token extraction utilities |
+| `src/lib/fetchWithAuth.ts` | Client-side automatic token refresh utility |
+| `src/app/api/auth/login/route.ts` | Login endpoint with dual-token issuance |
+| `src/app/api/auth/refresh/route.ts` | Token refresh endpoint |
+| `src/app/api/auth/logout/route.ts` | Logout endpoint with token clearing |
+| `middleware.ts` | JWT validation and RBAC enforcement |
+
+---
+
+### Testing Token Flow
+
+**Test Scenario 1: Login and Token Issuance**
+```bash
+# Login to get tokens
+curl -X POST http://localhost:5174/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123"}' \
+  -c cookies.txt
+
+# Verify tokens in cookies.txt
+cat cookies.txt
+```
+
+**Test Scenario 2: Access Token Expiry**
+```bash
+# Make API request with token
+curl http://localhost:5174/api/trains \
+  -b cookies.txt
+
+# Wait 15+ minutes, token expires
+# Next request returns 401
+
+# Response:
+{
+  "success": false,
+  "message": "Invalid or expired access token.",
+  "errorCode": "TOKEN_EXPIRED",
+  "hint": "Call /api/auth/refresh to get a new token"
+}
+```
+
+**Test Scenario 3: Token Refresh**
+```bash
+# Refresh access token
+curl -X POST http://localhost:5174/api/auth/refresh \
+  -b cookies.txt \
+  -c cookies.txt
+
+# New access token issued, retry original request
+curl http://localhost:5174/api/trains \
+  -b cookies.txt
+
+# Success!
+```
+
+---
+
+### Reflection on Security
+
+**What We Implemented:**
+✅ Dual-token system (access + refresh)
+✅ HTTP-only, SameSite cookies
+✅ Short-lived access tokens (15 min)
+✅ Automatic token refresh flow
+✅ Role-based access control
+✅ Signature verification with HS256
+✅ Separate secrets for token types
+✅ Secure token storage strategy
+
+**Security Tradeoffs:**
+- ⚖️ **Convenience vs Security**: 15-min expiry balances UX and security
+- ⚖️ **Storage**: HTTP-only cookies prevent XSS but require CORS setup
+- ⚖️ **Refresh Token Lifespan**: 7 days is user-friendly but increases risk window
+
+**Future Enhancements:**
+- 🔄 Token rotation: Rotate refresh tokens on each use
+- 📊 Token blacklisting: Store revoked tokens in Redis
+- 🔒 Device fingerprinting: Tie tokens to specific devices
+- 📝 Audit logging: Track all token operations
+- 🔐 Multi-factor authentication: Add second verification step
+
+**Lessons Learned:**
+1. **Short-lived tokens are crucial** - 15 minutes minimizes damage from token theft
+2. **HTTP-only cookies are non-negotiable** - XSS is too prevalent to risk localStorage
+3. **Refresh tokens need path restrictions** - Limits exposure surface area
+4. **Automatic refresh is essential** - Users should never notice token expiry
+5. **Separate secrets are important** - Compromised access token doesn't expose refresh tokens
+
+---
+
+## 🛡️ Authorization Middleware
 
 The application implements comprehensive **Role-Based Access Control (RBAC)** with JWT-based authorization middleware.
 

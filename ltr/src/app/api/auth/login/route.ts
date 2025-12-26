@@ -1,21 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { userLoginSchema } from "@/lib/schemas";
 import { ZodError } from "zod";
+import { generateAccessToken, generateRefreshToken } from "@/lib/jwt";
+import { setAuthCookies } from "@/lib/tokenStorage";
 
-if (!process.env.JWT_SECRET) {
-  throw new Error("JWT_SECRET is not defined");
-}
-
-const JWT_SECRET = process.env.JWT_SECRET;
-
+/**
+ * POST /api/auth/login
+ * Authenticate user and issue JWT tokens
+ *
+ * Flow:
+ * 1. Validate credentials
+ * 2. Generate access token (15 min expiry)
+ * 3. Generate refresh token (7 day expiry)
+ * 4. Set both tokens as HTTP-only cookies
+ * 5. Return user info
+ *
+ * Security:
+ * - Passwords hashed with bcrypt
+ * - Tokens stored as HTTP-only, SameSite cookies
+ * - Access token short-lived to minimize risk
+ * - Refresh token for seamless re-authentication
+ */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { email, password } = userLoginSchema.parse(body);
 
+    // Find user by email
     const user = await prisma.user.findUnique({
       where: { email },
     });
@@ -27,6 +40,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Verify password
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       return NextResponse.json(
@@ -35,10 +49,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    // Generate JWT tokens
+    const tokenPayload = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    };
 
+    const accessToken = generateAccessToken(tokenPayload);
+    const refreshToken = generateRefreshToken(tokenPayload);
+
+    // Create response with user data
     const response = NextResponse.json({
       message: "Login successful",
       user: {
@@ -47,14 +68,14 @@ export async function POST(req: NextRequest) {
         name: user.name,
         role: user.role,
       },
+      tokens: {
+        accessToken, // Also include in response for client-side storage if needed
+        expiresIn: "15m",
+      },
     });
 
-    response.cookies.set("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-    });
+    // Set secure HTTP-only cookies
+    setAuthCookies(response, accessToken, refreshToken);
 
     return response;
   } catch (error) {
