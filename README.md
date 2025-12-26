@@ -401,6 +401,53 @@ docker-compose down
 
 ---
 
+## Feedback Layers (Toasts, Modals, Loaders)
+
+To improve user trust and clarity we added a small, accessible feedback system that demonstrates the key flows needed for the LocalPassengers product: instant confirmations, blocking confirmations, and process indicators.
+
+What was added
+- **Global Toasts**: lightweight notifications that auto-dismiss and are announced to screen readers (`role="status"` / `aria-live="polite"`). Implemented at `ltr/src/components/ui/Toasts.tsx` and mounted globally in the layout (`ltr/src/components/layout/LayoutWrapper.tsx`).
+- **Accessible Modal**: a dialog component with `role="dialog"`, `aria-modal="true"`, Esc-to-close and overlay click-to-close. File: `ltr/src/components/ui/Modal.tsx`.
+- **Loader / Spinner**: non-blocking visual loading state with `role="status"` used during async operations. File: `ltr/src/components/ui/Loader.tsx`.
+
+Where to see it
+- Feedback demo page: open `/context-demo/feedback-demo` in the running app to see the Toast → Modal → Loader → Toast flow.
+- Signup flow: ` /forms-demo/signup` now triggers toasts and shows a loader while submitting.
+
+Accessibility & UX principles followed
+- Non-intrusive: toasts do not block the UI and auto-dismiss after a short time.
+- Blocking confirmations: the modal receives keyboard interactions and can be dismissed with `Esc` or Cancel.
+- Clear semantics: all feedback elements include ARIA roles and `aria-live` where applicable so screen readers receive the messages.
+- Color & tone: success (green), error (red), info (blue), warning (yellow) — consistent across toasts and inline alerts.
+- Motion: subtle animations only — fast enough to be noticed, slow enough to not be distracting.
+
+Developer notes
+- The UI notification system is implemented using the existing `UIContext` (`ltr/src/context/UIContext.tsx`) which stores notifications and auto-removes them after 5 seconds. Use `addNotification(message, type)` where `type` is `info|success|warning|error`.
+- Example (any client component):
+
+```tsx
+import { useUIContext } from "@/context/UIContext";
+
+const { addNotification } = useUIContext();
+addNotification("Saved successfully", "success");
+```
+
+Deliverables checklist
+- At least one modal for blocking confirmation: `ltr/src/components/ui/Modal.tsx` and demo at `/context-demo/feedback-demo`.
+- At least one toast for instant feedback: `ltr/src/components/ui/Toasts.tsx` and wired into `UIContext`.
+- Loader integrated with async operations: `ltr/src/components/ui/Loader.tsx` used on signup and demo page.
+- Accessible markup: ARIA roles and keyboard handling present for toasts/modals/loaders.
+- README updated with explanation, trigger points, and a demo path.
+
+Evidence
+- Run the app locally and visit `/context-demo/feedback-demo`. Use the **Start Flow** button to see the full sequence. Capture screenshots or a short recording to include here as proof (place images in `ltr/screenshots/` and update this README with the file paths).
+
+Reflection
+- Adding clear, accessible feedback drastically improves perceived reliability for commuters choosing alternate trains or deciding to wait. Toasts give quick reassurance, modals protect critical actions, and loaders set expectations during network delays — all crucial in time-sensitive commuter flows.
+
+
+---
+
 ## Transactional Email Integration (SES / SendGrid)
 
 Transactional emails are essential for LocalPassengers to keep commuters informed about saved trains, delays, platform changes, reroutes, and security alerts.

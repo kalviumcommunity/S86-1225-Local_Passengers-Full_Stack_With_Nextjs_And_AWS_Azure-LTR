@@ -5,6 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import FormInput from "@/components/FormInput";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUIContext } from "@/context/UIContext";
+import Loader from "@/components/ui/Loader";
 
 // Validation schema for signup
 const signupSchema = z.object({
@@ -32,6 +34,7 @@ export default function SignupFormPage() {
   const router = useRouter();
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const { addNotification } = useUIContext();
 
   const {
     register,
@@ -46,6 +49,7 @@ export default function SignupFormPage() {
     try {
       setSubmitError("");
       setSubmitSuccess(false);
+      addNotification("Saving account...", "info");
 
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -60,6 +64,7 @@ export default function SignupFormPage() {
       }
 
       setSubmitSuccess(true);
+      addNotification("Account created successfully", "success");
       reset();
 
       // Redirect to login after 2 seconds
@@ -69,6 +74,10 @@ export default function SignupFormPage() {
     } catch (error) {
       setSubmitError(
         error instanceof Error ? error.message : "An error occurred"
+      );
+      addNotification(
+        error instanceof Error ? error.message : "An error occurred",
+        "error"
       );
     }
   };
@@ -147,9 +156,16 @@ export default function SignupFormPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
+                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold flex items-center justify-center gap-2"
               >
-                {isSubmitting ? "Creating Account..." : "Sign Up"}
+                {isSubmitting ? (
+                  <>
+                    <Loader />
+                    <span>Creating Account...</span>
+                  </>
+                ) : (
+                  "Sign Up"
+                )}
               </button>
             </div>
           </form>
