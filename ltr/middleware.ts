@@ -1,9 +1,26 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import jwt from "jsonwebtoken";
+import { verifyAccessToken } from "./src/lib/jwt";
+import { getAccessToken } from "./src/lib/tokenStorage";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-in-production";
+/**
+ * Next.js Middleware with JWT Token Validation
+ *
+ * This middleware implements Role-Based Access Control (RBAC) using JWT tokens
+ * It validates access tokens and enforces role-based permissions
+ *
+ * Security Features:
+ * - JWT signature verification using HS256 algorithm
+ * - Token expiry validation
+ * - Role-based authorization
+ * - Secure token extraction from headers and cookies
+ * - Automatic token refresh suggestion on expiry
+ *
+ * Protected Routes:
+ * - Admin routes: Require ADMIN role
+ * - Station Master routes: Require STATION_MASTER or ADMIN role
+ * - Authenticated routes: Require any valid token
+ */
 
 // Define protected routes and their required roles for Local Train Passengers System
 const protectedRoutes = {
@@ -38,6 +55,11 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/routing-demo/dashboard") ||
     pathname.startsWith("/routing-demo/users");
 
+  // Skip auth check for refresh endpoint to avoid circular dependency
+  if (pathname === "/api/auth/refresh") {
+    return NextResponse.next();
+  }
+
   // If neither API nor routing-demo pages require auth, continue
   if (
     !requiresAdmin &&
@@ -48,11 +70,8 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Extract token from Authorization header or cookies
-  const authHeader = req.headers.get("authorization");
-  const tokenFromHeader = authHeader?.split(" ")[1];
-  const tokenFromCookie = req.cookies.get("token")?.value;
-  const token = tokenFromHeader || tokenFromCookie;
+  // Extract access token from Authorization header or cookies
+  const token = getAccessToken(req);
 
   if (!token) {
     // If it's a routing-demo page, redirect to the demo login page
@@ -67,17 +86,20 @@ export function middleware(req: NextRequest) {
         success: false,
         message: "Authentication required. Token missing.",
         errorCode: "AUTH_TOKEN_MISSING",
+        hint: "Please login or include a valid access token in your request",
       },
       { status: 401 }
     );
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      userId: number;
-      email: string;
-      role: string;
-    };
+    // Verify access token using new JWT library
+    const decoded = verifyAccessToken(token);
+
+    if (!decoded) {
+      // Token is invalid or expired
+      throw new Error("Invalid or expired access token");
+    }
 
     // API role checks
     if (requiresAdmin && decoded.role !== "ADMIN") {
@@ -128,10 +150,13 @@ export function middleware(req: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
+    // For API calls, return 401 with suggestion to refresh token
     return NextResponse.json(
       {
         success: false,
-        message: "Invalid or expired token.",
+        message: "Invalid or expired access token.",
+        errorCode: "TOKEN_EXPIRED",
+        hint: "Your access token has expired. Call /api/auth/refresh to get a new token using your refresh token.",
         error: error instanceof Error ? error.message : String(error),
       },
       { status: 401 }
