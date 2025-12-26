@@ -2624,8 +2624,4 @@ alertTypes: z.object({
 | Documentation | ✅ | This README section |
 | Type Safety | ✅ | TypeScript + Zod |
 
----
 
-**Pro Tip:** *A good form feels invisible — validation guides users gently while ensuring your data stays clean and predictable.*
-
----
