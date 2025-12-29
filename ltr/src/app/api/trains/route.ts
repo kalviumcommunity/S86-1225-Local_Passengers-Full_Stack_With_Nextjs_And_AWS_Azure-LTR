@@ -2,14 +2,17 @@ import { NextRequest } from "next/server";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
 import redis from "@/lib/redis";
+import { withCors } from "@/lib/cors";
 
 /**
  * GET /api/trains
  * Get list of trains
  * Access: Public / Authenticated User
  * Data fetched from external API (with Redis caching)
+ * CORS: Configured for secure cross-origin requests
  */
 export async function GET(req: NextRequest) {
+  return withCors(req, async () => {
   try {
     const { searchParams } = new URL(req.url);
     const page = Number(searchParams.get("page")) || 1;
@@ -120,4 +123,6 @@ export async function GET(req: NextRequest) {
       error
     );
   }
+  });
+}
 }
