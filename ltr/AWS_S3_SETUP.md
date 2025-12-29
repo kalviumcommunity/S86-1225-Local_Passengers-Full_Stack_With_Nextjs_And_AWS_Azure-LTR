@@ -1,23 +1,4 @@
-# AWS S3 File Upload - Quick Setup Guide
-
-## 1. AWS S3 Configuration
-
-### Create S3 Bucket
-1. Log in to AWS Console
-2. Navigate to S3 service
-3. Click "Create bucket"
-4. **Bucket name**: Choose a unique name (e.g., `local-passengers-files`)
-5. **Region**: Select `ap-south-1` (or your preferred region)
-6. **Block Public Access**: 
-   - Uncheck "Block all public access" if you want public file access
-   - OR keep it checked and use signed URLs for access
-7. Click "Create bucket"
-
-### Configure CORS
-1. Go to your bucket
-2. Click "Permissions" tab
-3. Scroll to "Cross-origin resource sharing (CORS)"
-4. Click "Edit" and paste:
+This documentation has been consolidated into README.md. Please refer to README for setup and testing.
 
 ```json
 [

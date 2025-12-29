@@ -118,17 +118,19 @@ export function middleware(req: NextRequest) {
     });
   } catch (error) {
     // Handle invalid or expired tokens
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-// Excludes public routes like /api/auth/login, /api/auth/register
-export const config = {
-  matcher: [
-    "/api/admin/:path*",
-    "/api/station-master/:path*",
-    "/api/users/:path*",
-    "/api/alerts/:path*",
-    "/api/trains/:path*",
-    "/api/reroutes
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Invalid or expired token",
+        errorCode: "AUTH_TOKEN_INVALID",
+        details: message,
+      },
+      { status: 401 }
+    );
+  }
+
+  }
 
 // Configure which routes the middleware should run on
 export const config = {

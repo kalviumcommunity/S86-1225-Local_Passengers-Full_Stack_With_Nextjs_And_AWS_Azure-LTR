@@ -1,12 +1,4 @@
-# File Upload Testing Guide
-
-## Overview
-This guide explains how to test the file upload feature with AWS S3 pre-signed URLs.
-
-## Prerequisites
-1. AWS S3 bucket configured with proper CORS settings
-2. AWS credentials set in `.env` file
-3. User authentication token (login first)
+Testing instructions have moved to README.md. Please use the Bruno requests in this folder and refer to README for details.
 
 ## Testing Flow
 
