@@ -3997,3 +3997,651 @@ Simplify role configuration.
 | Security considerations | ✅ | This README |
 | Scalability reflection | ✅ | This README |
 
+---
+
+## 🗄️ Cloud Database Configuration (PostgreSQL)
+
+### Overview
+
+LocalPassengers uses **PostgreSQL** as its primary database, supporting both local development (Docker) and cloud deployment (AWS RDS / Azure PostgreSQL). This section documents the database setup, configuration, connection management, and migration process.
+
+### Database Architecture
+
+**Current Setup:**
+- **Local Development:** PostgreSQL 15 via Docker Compose
+- **Cloud Production:** AWS RDS PostgreSQL or Azure Database for PostgreSQL
+- **ORM:** Prisma for type-safe database access
+- **Connection Pooling:** pg (node-postgres) with automatic SSL for cloud databases
+
+### Local Development Setup
+
+**Docker Compose Configuration:**
+```yaml
+# docker-compose.yml
+db:
+  image: postgres:15-alpine
+  container_name: postgres_db
+  restart: always
+  environment:
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: password
+    POSTGRES_DB: mydb
+  volumes:
+    - db_data:/var/lib/postgresql/data
+  ports:
+    - "5432:5432"
+```
+
+**Connection String:**
+```
+DATABASE_URL=postgres://postgres:password@db:5432/mydb
+```
+
+**Start Local Database:**
+```bash
+docker-compose up -d db
+npm run prisma:migrate
+npm run prisma:seed
+```
+
+---
+
+### Cloud Database Configuration
+
+#### Option 1: AWS RDS PostgreSQL
+
+**Provisioning Steps:**
+
+1. **Create RDS Instance**
+   - Go to AWS Console → RDS → Create Database
+   - Engine: PostgreSQL 15.x
+   - Template: Free tier (for testing) or Production
+   - DB Instance Identifier: `localpassengers-db`
+   - Master Username: `adminuser`
+   - Master Password: `[Generate strong password]`
+   - DB Instance Class: db.t3.micro (free tier) or db.t4g.medium (production)
+   - Storage: 20 GB SSD (General Purpose)
+   - Enable Storage Autoscaling: Yes (max 100 GB)
+
+2. **Configure VPC and Security**
+   - VPC: Default or create custom VPC
+   - Subnet Group: Default
+   - Public Access: **No** (production) or **Yes** (testing only)
+   - VPC Security Group: Create new `localpassengers-db-sg`
+   - Availability Zone: No preference or specific AZ
+
+3. **Additional Configuration**
+   - Initial Database Name: `localpassengers`
+   - Backup Retention: 7 days (minimum for production)
+   - Encryption: Enable encryption at rest (KMS)
+   - Enhanced Monitoring: Enable (60-second granularity)
+   - Auto Minor Version Upgrade: Enable
+
+4. **Network Security Configuration**
+   ```
+   Security Group Inbound Rules:
+   Type: PostgreSQL
+   Port: 5432
+   Source: 
+     - Development: Your IP address (My IP)
+     - Production: VPC CIDR or specific EC2/Lambda security group
+   ```
+
+5. **Connection String Format:**
+   ```
+   DATABASE_URL=postgresql://adminuser:YourPassword@localpassengers-db.c1a2b3c4.ap-south-1.rds.amazonaws.com:5432/localpassengers
+   ```
+
+**AWS RDS Configuration Summary:**
+| Setting | Development | Production |
+|---------|-------------|------------|
+| Instance | db.t3.micro | db.t4g.medium+ |
+| Storage | 20 GB | 100+ GB |
+| Multi-AZ | No | Yes |
+| Public Access | Temporary Yes | No |
+| Backups | 7 days | 30 days |
+| Encryption | Yes | Yes |
+
+---
+
+#### Option 2: Azure Database for PostgreSQL
+
+**Provisioning Steps:**
+
+1. **Create PostgreSQL Server**
+   - Azure Portal → Create Resource → Databases → Azure Database for PostgreSQL
+   - Deployment Option: Single Server (simple) or Flexible Server (production)
+   - Server Name: `localpassengers-db`
+   - Region: Central India or closest region
+   - Version: PostgreSQL 15
+   - Compute + Storage:
+     - Tier: Basic (dev) or General Purpose (prod)
+     - vCores: 2 (basic) or 4+ (prod)
+     - Storage: 20 GB (auto-grow enabled)
+
+2. **Configure Authentication**
+   - Admin Username: `adminuser`
+   - Password: `[Generate strong password]`
+   - Authentication Method: PostgreSQL authentication
+
+3. **Network Configuration**
+   - Connectivity Method: 
+     - **Public access:** Allow Azure services + Add client IP
+     - **Private access:** VNet integration (production)
+   - SSL Enforcement: Enabled (required)
+   - TLS Version: 1.2 minimum
+
+4. **Firewall Rules**
+   ```
+   Rule Name: AllowClientIP
+   Start IP: [Your IP]
+   End IP: [Your IP]
+   
+   Rule Name: AllowAzureServices
+   Start IP: 0.0.0.0
+   End IP: 0.0.0.0
+   ```
+
+5. **Connection String Format:**
+   ```
+   DATABASE_URL=postgresql://adminuser%40localpassengers-db:YourPassword@localpassengers-db.postgres.database.azure.com:5432/localpassengers?sslmode=require
+   ```
+   **Note:** Azure requires `%40` (encoded @) in username and `?sslmode=require`
+
+**Azure PostgreSQL Configuration Summary:**
+| Setting | Development | Production |
+|---------|-------------|------------|
+| Tier | Basic | General Purpose |
+| vCores | 2 | 4-8 |
+| Storage | 20 GB | 100+ GB |
+| Backup Retention | 7 days | 35 days |
+| Geo-Redundancy | No | Yes |
+| SSL | Required | Required |
+
+---
+
+### Database Connection Management
+
+**Connection Utility:** `src/lib/dbConnection.ts`
+
+This utility automatically handles:
+- ✅ Connection pooling (max 20 connections)
+- ✅ SSL for cloud databases (AWS RDS / Azure PostgreSQL)
+- ✅ Connection timeouts and idle management
+- ✅ Query logging and performance monitoring
+
+**Features:**
+```typescript
+import { testConnection, query, getClient } from '@/lib/dbConnection';
+
+// Test connection
+await testConnection(); // Returns true/false
+
+// Execute query
+const result = await query('SELECT * FROM users WHERE id = $1', [userId]);
+
+// Get client for transactions
+const client = await getClient();
+try {
+  await client.query('BEGIN');
+  await client.query('INSERT INTO...');
+  await client.query('UPDATE...');
+  await client.query('COMMIT');
+} finally {
+  client.release();
+}
+```
+
+**Health Check Endpoint:** `/api/health/db`
+
+Test database connectivity:
+```bash
+curl http://localhost:5174/api/health/db
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Database connection successful",
+  "database": "AWS RDS PostgreSQL",
+  "timestamp": "2025-12-29T08:00:00.000Z"
+}
+```
+
+---
+
+### Environment Configuration
+
+**Development (.env.local):**
+```env
+# Local Docker PostgreSQL
+DATABASE_URL=postgres://postgres:password@localhost:5432/mydb
+```
+
+**Production (.env.production):**
+```env
+# AWS RDS
+DATABASE_URL=postgresql://adminuser:SecurePassword@rds-endpoint.region.rds.amazonaws.com:5432/localpassengers
+
+# OR Azure PostgreSQL
+DATABASE_URL=postgresql://adminuser%40servername:SecurePassword@servername.postgres.database.azure.com:5432/localpassengers?sslmode=require
+```
+
+**Security Best Practices:**
+- ✅ Never commit `.env` files to Git
+- ✅ Use strong passwords (min 16 characters, alphanumeric + symbols)
+- ✅ Rotate credentials every 90 days
+- ✅ Use environment-specific secrets management (AWS Secrets Manager / Azure Key Vault)
+
+---
+
+### Migration to Cloud Database
+
+**Step 1: Backup Local Database**
+```bash
+# Export local data
+docker exec postgres_db pg_dump -U postgres mydb > backup.sql
+```
+
+**Step 2: Create Cloud Database**
+Follow AWS RDS or Azure PostgreSQL steps above
+
+**Step 3: Update Environment Variable**
+```bash
+# Update .env.local with cloud DATABASE_URL
+DATABASE_URL=postgresql://adminuser:password@cloud-endpoint:5432/localpassengers
+```
+
+**Step 4: Run Migrations**
+```bash
+npm run prisma:generate
+npm run prisma:migrate deploy
+```
+
+**Step 5: Import Data (Optional)**
+```bash
+# Import backup to cloud database
+psql -h cloud-endpoint -U adminuser -d localpassengers < backup.sql
+```
+
+**Step 6: Verify Connection**
+```bash
+# Test health endpoint
+curl http://localhost:5174/api/health/db
+
+# Or test Prisma connection
+npx prisma db pull
+```
+
+---
+
+### Network Security Configuration
+
+#### Development (Temporary Public Access)
+
+**AWS RDS:**
+- Public Access: Enabled
+- Security Group: Allow port 5432 from `My IP`
+- **Warning:** Disable public access after testing
+
+**Azure PostgreSQL:**
+- Firewall: Add client IP address
+- SSL: Required
+- **Warning:** Remove client IP rule in production
+
+#### Production (Private Access)
+
+**AWS RDS Best Practices:**
+1. **VPC Configuration:**
+   - Place RDS in private subnet
+   - No public IP assignment
+   - Access only from application servers in same VPC
+
+2. **Security Groups:**
+   ```
+   DB Security Group:
+   Inbound: Port 5432 from App Security Group only
+   Outbound: None needed
+   
+   App Security Group:
+   Outbound: Port 5432 to DB Security Group
+   ```
+
+3. **VPN/Bastion Access:**
+   - Use VPN or Bastion host for admin access
+   - Enable AWS Systems Manager Session Manager
+
+**Azure PostgreSQL Best Practices:**
+1. **VNet Integration:**
+   - Use Private Endpoint for secure access
+   - Connect via VNet peering or VPN
+
+2. **Firewall Rules:**
+   - Disable "Allow Azure Services"
+   - Use Private Link for secure connectivity
+   - Enable Advanced Threat Protection
+
+3. **SSL/TLS:**
+   - Enforce SSL (enabled by default)
+   - Use TLS 1.2 minimum
+
+---
+
+### Backup and Disaster Recovery
+
+#### Automated Backups
+
+**AWS RDS:**
+- **Backup Window:** Daily automated snapshots
+- **Retention:** 7 days (dev) to 35 days (prod)
+- **Point-in-Time Recovery:** Up to retention period
+- **Cross-Region Replication:** Enable for disaster recovery
+
+**Azure PostgreSQL:**
+- **Backup Frequency:** Automatic daily backups
+- **Retention:** 7 days (basic) to 35 days (geo-redundant)
+- **Geo-Redundant Backup:** Enable for cross-region recovery
+- **Long-Term Retention:** Azure Backup for compliance
+
+#### Manual Backup Strategy
+
+**Regular Backups:**
+```bash
+# Backup database
+pg_dump -h endpoint -U user -d dbname > backup_$(date +%Y%m%d).sql
+
+# Backup with compression
+pg_dump -h endpoint -U user -d dbname | gzip > backup_$(date +%Y%m%d).sql.gz
+```
+
+**Restore from Backup:**
+```bash
+# Restore database
+psql -h endpoint -U user -d dbname < backup_20251229.sql
+
+# Restore from compressed
+gunzip -c backup_20251229.sql.gz | psql -h endpoint -U user -d dbname
+```
+
+---
+
+### Monitoring and Performance
+
+#### AWS CloudWatch Metrics
+
+Monitor these RDS metrics:
+- **CPUUtilization:** Should stay < 80%
+- **DatabaseConnections:** Monitor active connections
+- **FreeableMemory:** Alert if < 20%
+- **ReadLatency / WriteLatency:** Optimize if > 20ms
+- **ReadIOPS / WriteIOPS:** Plan scaling based on trends
+
+**CloudWatch Alarms:**
+```
+High CPU: > 80% for 5 minutes
+Low Memory: < 512 MB for 5 minutes
+High Connections: > 80% of max_connections
+Slow Queries: Query duration > 1 second
+```
+
+#### Azure Monitor Metrics
+
+Monitor these PostgreSQL metrics:
+- **CPU percent:** Alert if > 80%
+- **Memory percent:** Alert if > 90%
+- **Active connections:** Track connection pool usage
+- **Storage percent:** Alert at 80% for auto-scaling
+- **Failed connections:** Alert on authentication issues
+
+**Azure Alerts:**
+```
+Resource Health: Alert on any health degradation
+Slow Query Log: Enable and monitor queries > 1s
+Connection Failures: Alert on repeated failures
+Backup Failures: Alert immediately
+```
+
+---
+
+### Scaling Strategies
+
+#### Vertical Scaling (More Resources)
+
+**AWS RDS:**
+```
+Development: db.t3.micro (1 vCPU, 1 GB RAM)
+     ↓
+Production: db.t4g.medium (2 vCPU, 4 GB RAM)
+     ↓
+High Load: db.r6g.xlarge (4 vCPU, 32 GB RAM)
+```
+
+**Azure PostgreSQL:**
+```
+Basic: 2 vCores, 5 GB RAM
+     ↓
+General Purpose: 4 vCores, 16 GB RAM
+     ↓
+Memory Optimized: 8 vCores, 64 GB RAM
+```
+
+#### Horizontal Scaling (Read Replicas)
+
+**AWS RDS Read Replicas:**
+- Create up to 5 read replicas
+- Use for read-heavy workloads
+- Automatic failover with Multi-AZ
+
+**Azure PostgreSQL Replicas:**
+- Read replicas in same or different regions
+- Promote replica to primary during failover
+
+**Connection Strategy:**
+```env
+# Primary for writes
+DATABASE_URL=postgresql://user:pass@primary-endpoint:5432/db
+
+# Replica for reads
+DATABASE_READ_URL=postgresql://user:pass@replica-endpoint:5432/db
+```
+
+---
+
+### Cost Optimization
+
+#### AWS RDS Cost Breakdown
+
+| Component | Cost (Estimated) |
+|-----------|------------------|
+| db.t3.micro (Free Tier) | $0/month (12 months) |
+| db.t3.micro (Post Free) | ~$15/month |
+| db.t4g.medium | ~$60/month |
+| Storage (20 GB) | ~$2/month |
+| Backup Storage | First 20 GB free |
+| Data Transfer | First 1 GB/month free |
+
+**Optimization Tips:**
+- Use Reserved Instances (save 30-40%)
+- Enable storage autoscaling (avoid over-provisioning)
+- Delete old snapshots
+- Use Aurora Serverless for variable workloads
+
+#### Azure PostgreSQL Cost Breakdown
+
+| Component | Cost (Estimated) |
+|-----------|------------------|
+| Basic (2 vCores) | ~$30/month |
+| General Purpose (4 vCores) | ~$150/month |
+| Storage (20 GB) | ~$2/month |
+| Backup Storage | 1x database size free |
+| Geo-Redundant Backup | +$4/month |
+
+**Optimization Tips:**
+- Use Azure Hybrid Benefit (save 40%)
+- Reserved capacity (save 38-65%)
+- Stop/Start during non-business hours (dev/test)
+
+---
+
+### Verification and Testing
+
+#### Connection Test from Application
+
+1. **Health Check:**
+```bash
+npm run dev
+curl http://localhost:5174/api/health/db
+```
+
+Expected response:
+```json
+{
+  "success": true,
+  "message": "Database connection successful",
+  "database": "AWS RDS PostgreSQL"
+}
+```
+
+2. **Prisma Studio:**
+```bash
+npm run prisma:studio
+```
+Opens GUI at `http://localhost:5555` to browse database
+
+#### Connection Test from Admin Client
+
+**Using psql CLI:**
+```bash
+# AWS RDS
+psql -h localpassengers-db.c1a2b3c4.ap-south-1.rds.amazonaws.com -U adminuser -d localpassengers
+
+# Azure PostgreSQL
+psql "host=servername.postgres.database.azure.com port=5432 dbname=localpassengers user=adminuser@servername sslmode=require"
+```
+
+**Using pgAdmin:**
+1. Right-click Servers → Create → Server
+2. General Tab: Name = "LocalPassengers Cloud DB"
+3. Connection Tab:
+   - Host: RDS/Azure endpoint
+   - Port: 5432
+   - Database: localpassengers
+   - Username: adminuser
+   - Password: [your password]
+   - SSL Mode: Require
+
+**Using Azure Data Studio:**
+1. New Connection
+2. Server: Azure endpoint
+3. Authentication: PostgreSQL
+4. Database: localpassengers
+5. Encrypt: Mandatory
+
+---
+
+### Trade-offs and Reflections
+
+#### Public vs Private Access
+
+**Public Access (Development):**
+- ✅ **Pros:** Easy to connect from laptop, quick setup, good for testing
+- ❌ **Cons:** Security risk, exposed to internet, not production-ready
+- **Use Case:** Initial development and testing only
+
+**Private Access (Production):**
+- ✅ **Pros:** Secure, isolated in VPC/VNet, follows best practices
+- ❌ **Cons:** Requires VPN or Bastion for admin access, more complex setup
+- **Use Case:** Production deployments, sensitive data
+
+**Our Approach:**
+- Development: Public access with IP whitelisting (temporary)
+- Production: Private subnet with VPC peering and private endpoints
+- Admin Access: VPN or AWS Systems Manager Session Manager
+
+#### Managed vs Self-Hosted
+
+**Managed (AWS RDS / Azure PostgreSQL):**
+- ✅ Automated backups and updates
+- ✅ Built-in monitoring and alerting
+- ✅ Easy scaling (vertical and horizontal)
+- ✅ High availability with Multi-AZ
+- ❌ Higher cost than EC2/VM-based PostgreSQL
+- ❌ Less control over server configuration
+
+**Self-Hosted (EC2 / VM):**
+- ✅ Full control over configuration
+- ✅ Lower infrastructure cost
+- ❌ Manual backup and patching
+- ❌ You handle HA and failover
+- ❌ Requires database administration expertise
+
+**Our Choice:** Managed database (RDS/Azure) because:
+- Team can focus on application development
+- Automated backups provide data safety
+- Built-in monitoring reduces operational overhead
+- Easy to scale as user base grows
+
+#### Multi-AZ vs Single-AZ
+
+**Single-AZ (Development):**
+- Lower cost (~50% cheaper)
+- Acceptable for dev/test environments
+- Downtime during maintenance windows
+
+**Multi-AZ (Production):**
+- Automatic failover (60-120 seconds)
+- Data durability across availability zones
+- Zero data loss
+- ~2x cost but critical for production
+
+**Our Strategy:**
+- Development: Single-AZ
+- Staging: Single-AZ with frequent backups
+- Production: Multi-AZ with cross-region read replicas
+
+#### Cost vs Performance
+
+**Scenario 1: Early Startup (< 1000 users)**
+- AWS: db.t3.micro or db.t4g.micro
+- Azure: Basic tier, 2 vCores
+- Cost: $15-30/month
+- Sufficient for MVP and initial user base
+
+**Scenario 2: Growing App (1000-10000 users)**
+- AWS: db.t4g.medium with read replica
+- Azure: General Purpose, 4 vCores
+- Cost: $100-150/month
+- Handles moderate traffic with read scaling
+
+**Scenario 3: Production Scale (10000+ users)**
+- AWS: db.r6g.xlarge + Multi-AZ + 2 read replicas
+- Azure: Memory Optimized, 8 vCores + geo-replication
+- Cost: $500+/month
+- High availability, low latency, disaster recovery
+
+---
+
+### Database Documentation Checklist
+
+| Requirement | Status | Details |
+|-------------|--------|---------|
+| **Provisioning** | ✅ | AWS RDS & Azure PostgreSQL documented |
+| **Network Config** | ✅ | Security groups, firewall rules, SSL |
+| **Connection** | ✅ | Environment variables, SSL handling |
+| **Health Check** | ✅ | `/api/health/db` endpoint created |
+| **Admin Client** | ✅ | psql, pgAdmin, Azure Data Studio |
+| **Backups** | ✅ | Automated & manual strategies |
+| **Monitoring** | ✅ | CloudWatch & Azure Monitor metrics |
+| **Scaling** | ✅ | Vertical & horizontal strategies |
+| **Cost Analysis** | ✅ | Breakdown & optimization tips |
+| **Verification** | ✅ | Testing procedures documented |
+| **Reflections** | ✅ | Trade-offs & production considerations |
+
+---
+
+**Database Status:** ✅ Configured for Local & Cloud Deployment  
+**Last Updated:** December 29, 2025  
+**Supported Platforms:** AWS RDS PostgreSQL, Azure Database for PostgreSQL, Docker (Local)
+
+---
