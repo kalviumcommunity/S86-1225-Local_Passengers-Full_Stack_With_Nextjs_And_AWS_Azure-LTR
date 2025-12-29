@@ -399,6 +399,127 @@ docker --version
 docker-compose --version
 ```
 
+---
+
+## **Cloud Object Storage (AWS S3 / Azure Blob) & Upload Flow**
+
+- **Purpose:** Store user-uploaded files (images, PDFs, attachments) securely and scalably using cloud object storage. This project includes a server-side presigned URL flow so clients can upload directly to the provider without exposing secrets.
+
+- **Implemented in repo:** Server-side presigned upload is implemented at [ltr/src/app/api/upload/route.ts](ltr/src/app/api/upload/route.ts#L1-L200). It uses the AWS SDK v3 and returns a pre-signed PUT URL plus metadata (`uploadUrl`, `fileKey`, `publicUrl`, `expiresIn`).
+
+### AWS S3 (recommended for this project)
+
+- Create a private bucket (Block all public access) in the AWS Console.
+- Recommended bucket name example: `kalvium-app-storage` (must be globally unique).
+- Enable versioning if you want to retain previous object versions.
+
+IAM permissions (minimal):
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject"],
+      "Resource": ["arn:aws:s3:::kalvium-app-storage/*"]
+    }
+  ]
+}
+
+Store credentials in `.env.local` (server only):
+
+- `AWS_REGION=ap-south-1`
+- `AWS_BUCKET_NAME=kalvium-app-storage`
+- `AWS_ACCESS_KEY_ID=AKIA...`
+- `AWS_SECRET_ACCESS_KEY=...`
+
+The existing server route uses `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to generate signed PUT URLs. The API validates content-type and file size before generating the signed URL.
+
+### Azure Blob (alternate)
+
+- Create a Storage Account and a container named `uploads` (Private).
+- Use a short-lived SAS token scoped to the container with `Write` and `Create` permissions for uploads and `Read` for downloads.
+- Server should generate SAS URLs and return them to the client similarly to the AWS flow.
+
+### Environment variables (example `.env.local`)
+
+- `JWT_SECRET=your_jwt_secret`
+- `AWS_REGION=ap-south-1`
+- `AWS_BUCKET_NAME=kalvium-app-storage`
+- `AWS_ACCESS_KEY_ID=...`
+- `AWS_SECRET_ACCESS_KEY=...`
+
+### How to test the upload flow (client -> server -> S3)
+
+1. Start the app locally (in `ltr`):
+
+```bash
+cd ltr
+npm install
+npm run dev
+```
+
+2. Request a presigned URL from the server (example using `fetch`):
+
+```js
+// POST /api/upload
+const body = { fileName: file.name, fileType: file.type, fileSize: file.size };
+const res = await fetch('/api/upload', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+});
+const { uploadUrl, fileKey, publicUrl } = await res.json();
+
+// Upload file directly to S3
+await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+
+// After upload, object is available at `publicUrl` (if bucket policy allows) or via signed GET
+```
+
+The server route handled at [ltr/src/app/api/upload/route.ts](ltr/src/app/api/upload/route.ts#L1-L200) already performs file type and size validation and generates a safe `fileKey` under `uploads/{userId}/...`.
+
+### Client-side validation (example)
+
+```js
+if (!['image/png','image/jpeg'].includes(file.type)) {
+  throw new Error('Only PNG and JPEG allowed');
+}
+if (file.size > 2 * 1024 * 1024) {
+  throw new Error('File too large (max 2MB)');
+}
+```
+
+### Security & Lifecycle Recommendations
+
+- Keep buckets/containers private and only allow uploads via server-generated signed URLs or SAS tokens.
+- Use IAM roles (if running on AWS compute) or short-lived credentials instead of long-lived keys when possible.
+- Limit presigned URL expiry (the repository uses 60s by default); increase carefully when needed.
+- Apply lifecycle rules to move older files to cheaper storage classes or delete temporary files after 30 days.
+- Log and monitor object access using AWS CloudTrail / Azure Monitor.
+
+### Cost considerations
+
+- Object storage costs include storage GB/month, requests (PUT/GET), and data transfer. Use lifecycle policies for cost control and consider infrequent access tiers for rarely-read files.
+
+### Deliverables (what's included)
+
+- Created server presigned upload flow: [ltr/src/app/api/upload/route.ts](ltr/src/app/api/upload/route.ts#L1-L200) (AWS S3 presigned PUT)
+- Validation: server-side content-type and size checks are implemented in the route above.
+- Client upload pattern: demonstrated in this README (fetch POST to `/api/upload` then PUT to `uploadUrl`).
+- Recommendations for IAM/SAS, lifecycle, and security are documented here.
+
+### Screenshots
+
+Place screenshots showing a successful upload and S3/Blob dashboard under `ltr/screenshots/` (example filenames):
+
+- `ltr/screenshots/upload-success.png` — successful client upload flow
+- `ltr/screenshots/s3-object-list.png` — object visible in S3 console
+
+---
+
+If you'd like, I can add a small client component under `ltr/src/components` demonstrating file selection and upload, or commit a sample `.env.example` with the variables listed above. Which would you prefer?
+
 #### Running the Application
 
 1. **Start all services:**
