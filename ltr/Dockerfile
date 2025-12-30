@@ -1,19 +1,28 @@
-# Use official Node.js image
-FROM node:20-alpine
+# Stage 1: Build
+FROM node:20-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
-# Copy project files and build the app
 COPY . .
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN npm run build
 
-# Expose the app port
+# Stage 2: Run
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/next.config.ts ./next.config.ts
+
 EXPOSE 3000
 
-# Start the app
-CMD ["npm", "run", "start"]
+CMD ["npm", "start"]

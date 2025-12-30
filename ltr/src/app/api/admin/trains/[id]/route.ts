@@ -191,7 +191,7 @@ export async function PUT(
       if (duplicateTrain) {
         return sendError(
           "Train with this number already exists",
-          ERROR_CODES.CONFLICT_ERROR,
+          ERROR_CODES.CONFLICT,
           409
         );
       }

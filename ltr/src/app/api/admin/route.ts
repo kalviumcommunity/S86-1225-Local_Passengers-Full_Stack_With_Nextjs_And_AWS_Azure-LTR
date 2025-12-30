@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendSuccess, sendError } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/admin
@@ -92,7 +93,9 @@ export async function GET(req: NextRequest) {
       "Admin dashboard data retrieved successfully"
     );
   } catch (error) {
-    console.error("Admin dashboard error:", error);
+    logger.error("Admin dashboard error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return sendError(
       "Failed to fetch admin dashboard data",
       ERROR_CODES.DATABASE_ERROR,

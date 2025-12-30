@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   sendSuccess,
   sendError,
-  sendNotFound,
+  sendNotFoundError,
   sendValidationError,
 } from "@/lib/responseHandler";
 import { ERROR_CODES } from "@/lib/errorCodes";
+import { logger } from "@/lib/logger";
 import { z, ZodError } from "zod";
 
 // Schema for updating user roles
@@ -21,10 +22,12 @@ const updateRoleSchema = z.object({
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = parseInt(params.id);
+    void req;
+    const { id } = await params;
+    const userId = parseInt(id);
 
     if (isNaN(userId)) {
       return sendValidationError("Invalid user ID", [
@@ -79,12 +82,14 @@ export async function GET(
     });
 
     if (!user) {
-      return sendNotFound("User not found");
+      return sendNotFoundError("User not found");
     }
 
     return sendSuccess(user, "User details retrieved successfully");
   } catch (error) {
-    console.error("Get user error:", error);
+    logger.error("Get user error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return sendError(
       "Failed to fetch user details",
       ERROR_CODES.DATABASE_ERROR,
@@ -101,10 +106,11 @@ export async function GET(
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = parseInt(params.id);
+    const { id } = await params;
+    const userId = parseInt(id);
 
     if (isNaN(userId)) {
       return sendValidationError("Invalid user ID", [
@@ -126,7 +132,7 @@ export async function PATCH(
     });
 
     if (!existingUser) {
-      return sendNotFound("User not found");
+      return sendNotFoundError("User not found");
     }
 
     // Update user
@@ -158,7 +164,9 @@ export async function PATCH(
       );
     }
 
-    console.error("Update user error:", error);
+    logger.error("Update user error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return sendError(
       "Failed to update user",
       ERROR_CODES.DATABASE_ERROR,
@@ -175,10 +183,11 @@ export async function PATCH(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = parseInt(params.id);
+    const { id } = await params;
+    const userId = parseInt(id);
     const adminId = parseInt(req.headers.get("x-user-id") || "0");
 
     if (isNaN(userId)) {
@@ -200,7 +209,7 @@ export async function DELETE(
     });
 
     if (!user) {
-      return sendNotFound("User not found");
+      return sendNotFoundError("User not found");
     }
 
     // Delete user (cascade will handle related records)
@@ -208,12 +217,11 @@ export async function DELETE(
       where: { id: userId },
     });
 
-    return sendSuccess(
-      { deletedUserId: userId },
-      "User deleted successfully"
-    );
+    return sendSuccess({ deletedUserId: userId }, "User deleted successfully");
   } catch (error) {
-    console.error("Delete user error:", error);
+    logger.error("Delete user error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return sendError(
       "Failed to delete user",
       ERROR_CODES.DATABASE_ERROR,
