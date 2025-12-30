@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Local Train Passengers (LTR)
 
-## Getting Started
+This is a Next.js application for the Local Train Passengers system.
 
-First, run the development server:
+## Getting Started (Local)
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Secure Environment Setup on Cloud (AWS Secrets Manager)
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+Production secrets (DB URLs, JWT secrets, API keys) should not live in plaintext `.env` files.
+This app supports retrieving secrets at runtime from a cloud-managed secret store.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### What this repo supports
 
-## Learn More
+- AWS Secrets Manager: fetch a single JSON secret containing key/value pairs.
+- Runtime verification endpoint: `GET /api/health/secrets` (returns metadata only).
+- Database connection can use cloud-managed `DATABASE_URL` at runtime.
 
-To learn more about Next.js, take a look at the following resources:
+Implementation:
+- Secrets helper: `src/lib/cloudSecrets.ts`
+- DB uses secrets if needed: `src/lib/dbConnection.ts`
+- Verification route: `src/app/api/health/secrets/route.ts`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### AWS Secrets Manager
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1) Create a secret (Console → Secrets Manager → Store a new secret)
 
-## Deploy on Vercel
+- Type: “Other type of secret”
+- Store as JSON key/value pairs (example):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```json
+{
+	"DATABASE_URL": "postgresql://...",
+	"JWT_SECRET": "...",
+	"JWT_REFRESH_SECRET": "..."
+}
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+2) Configure environment variables for the running service/container:
+
+- `AWS_REGION`
+- `AWS_SECRET_ARN` (or `AWS_SECRET_ID` / `AWS_SECRETS_MANAGER_SECRET_ID`)
+
+3) Least-privilege IAM (example policy)
+
+Grant only read access to the specific secret:
+
+```json
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Effect": "Allow",
+			"Action": ["secretsmanager:GetSecretValue"],
+			"Resource": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:nextjs/app-secrets-*"
+		}
+	]
+}
+```
+
+Attach this policy to the workload identity (ECS task role / EC2 instance role), not a personal IAM user.
+
+### Validate runtime injection (safe)
+
+Call the verification endpoint:
+
+- Dev/local (no token required):
+
+```bash
+curl http://localhost:5174/api/health/secrets
+```
+
+- Production: set `SECRETS_DEBUG_TOKEN` and call with header `x-debug-token`.
+
+This endpoint never returns secret values—only provider metadata and key names.
+
+### Rotation and access practices
+
+- Rotation: rotate DB credentials / JWT secrets on a regular cadence (e.g., monthly) or immediately after any suspected leak.
+- Access control: use workload identities (ECS task role / Azure Managed Identity) with least-privilege permissions.
+- Observability: avoid logging secret values. This repo’s `/api/health/secrets` returns metadata only.
+
