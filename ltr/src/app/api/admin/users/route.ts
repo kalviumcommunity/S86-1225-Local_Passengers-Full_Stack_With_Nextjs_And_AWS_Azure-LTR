@@ -212,7 +212,7 @@ export async function POST(req: NextRequest) {
     if (existingUser) {
       return sendError(
         "User with this email already exists",
-        ERROR_CODES.CONFLICT_ERROR,
+        ERROR_CODES.CONFLICT,
         409
       );
     }

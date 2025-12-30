@@ -85,3 +85,150 @@ This endpoint never returns secret values—only provider metadata and key names
 - Access control: use workload identities (ECS task role / Azure Managed Identity) with least-privilege permissions.
 - Observability: avoid logging secret values. This repo’s `/api/health/secrets` returns metadata only.
 
+## Deployment with Docker on Azure (ACR + App Service)
+
+This project is containerized using Docker and can be deployed to Azure App Service for Containers.
+
+### Dockerfile
+
+- Dockerfile path: `ltr/Dockerfile`
+- Uses a 2-stage build (builder + runner) for smaller runtime images.
+
+### Build and run locally (Docker)
+
+From the `ltr/` directory:
+
+```bash
+docker build -t ltr-nextjs-app .
+docker run -p 3000:3000 ltr-nextjs-app
+```
+
+Open `http://localhost:3000`.
+
+Note: If you see a TypeScript build “out of memory” issue on some machines, increase Node heap:
+
+```bash
+set NODE_OPTIONS=--max-old-space-size=4096
+```
+
+### Push image to Azure Container Registry (ACR)
+
+Example commands:
+
+```bash
+az acr login --name <acrName>
+docker tag ltr-nextjs-app <acrLoginServer>/<repoName>:latest
+docker push <acrLoginServer>/<repoName>:latest
+```
+
+### Deploy to Azure App Service (Container)
+
+High-level configuration:
+
+- Create an App Service (Web App) configured for a single container.
+- Set `WEBSITES_PORT=3000`.
+- Point the Web App to the ACR image.
+
+### CI/CD pipeline
+
+GitHub Actions workflow:
+
+- `.github/workflows/deploy-azure-appservice-container.yml`
+
+It performs:
+
+- Build Docker image from `ltr/`
+- Push image to ACR
+- Update App Service container to the new image
+
+Required GitHub secrets:
+
+- `AZURE_CREDENTIALS` (service principal JSON)
+- `ACR_NAME`
+- `ACR_LOGIN_SERVER`
+- `ACR_IMAGE_REPO`
+- `AZURE_RESOURCE_GROUP`
+- `AZURE_WEBAPP_NAME`
+- `ACR_USERNAME`, `ACR_PASSWORD` (if using ACR admin credentials)
+
+### Autoscaling and resource sizing (reflection)
+
+- Start with a small plan (CPU/RAM) and scale based on real metrics (CPU, memory, request latency).
+- Configure scale-out rules (e.g., 1–3 instances based on CPU %).
+- Cold starts: smaller images and fewer runtime dependencies reduce startup time.
+- Health checks: prefer a lightweight endpoint (e.g., `/api/health/db` if DB is reachable) and configure App Service health check path.
+
+### Evidence to capture (screenshots)
+
+- ACR repository + pushed image tag
+- App Service “Container settings” showing the image
+- Live URL working in browser
+
+## Domain & SSL Setup (Azure DNS + App Service)
+
+This section documents how to connect a custom domain and enable HTTPS for the deployed Azure App Service (Container).
+
+### 1) Connect your domain to Azure DNS (or use your registrar DNS)
+
+Option A — Azure DNS Zone:
+
+- Create an Azure DNS Zone for your domain (e.g., `example.com`).
+- Copy the NS records from Azure DNS.
+- Update nameservers in your registrar to the Azure DNS NS values.
+
+Option B — Keep DNS at registrar:
+
+- You can keep DNS at Namecheap/GoDaddy/etc. and still add the required CNAME/TXT records there.
+
+### 2) Add DNS records for App Service custom domain
+
+In Azure Portal → App Service → Custom domains:
+
+- Add your domain (root or subdomain).
+- Azure will prompt you to add verification records.
+
+Typical records you’ll add:
+
+- `CNAME` (for a subdomain like `www`):
+	- Host/Name: `www`
+	- Value/Target: `<your-app>.azurewebsites.net`
+
+- `TXT` (domain ownership verification):
+	- Host/Name: `asuid.www` (or as instructed by Azure)
+	- Value: (provided by Azure)
+
+For apex/root domain (`example.com`), Azure commonly uses an `A` record to an App Service IP plus a TXT verification record.
+
+### 3) Issue and bind an SSL certificate
+
+Use an App Service Managed Certificate (simple + auto-renew):
+
+- Azure Portal → App Service → TLS/SSL settings
+- Create “App Service Managed Certificate”
+- Bind it to your custom domain under “TLS/SSL bindings”
+
+### 4) Force HTTPS
+
+Do both (recommended):
+
+- Azure Portal → App Service → TLS/SSL settings → **HTTPS Only: ON**
+- App-level redirect support is included via middleware when `FORCE_HTTPS=true` (checks `x-forwarded-proto`).
+
+### 5) Verify
+
+- Visit `https://<your-domain>` and confirm the browser shows the HTTPS padlock.
+- Optional: run an SSL Labs check: https://www.ssllabs.com/ssltest/
+
+### Evidence to capture (screenshots)
+
+- DNS records (CNAME/TXT and/or A record) in Azure DNS or your registrar
+- App Service custom domain added successfully
+- Certificate status / TLS binding
+- Browser showing `https://` with padlock
+
+### Reflection (what to mention)
+
+- Renewal: App Service Managed Certificates auto-renew (reduced operational overhead)
+- Multi-env: use subdomains like `dev.<domain>` / `staging.<domain>` / `api.<domain>`
+- Cost/maintenance: DNS hosting + App Service plan tier requirements for certain TLS features
+

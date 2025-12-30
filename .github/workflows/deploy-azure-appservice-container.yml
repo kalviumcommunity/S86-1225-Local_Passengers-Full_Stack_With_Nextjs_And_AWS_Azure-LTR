@@ -1,0 +1,59 @@
+name: Deploy LTR (Docker) to Azure App Service
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "ltr/**"
+      - ".github/workflows/deploy-azure-appservice-container.yml"
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to Azure Container Registry (ACR)
+        run: az acr login --name "${{ secrets.ACR_NAME }}"
+
+      - name: Build + push Docker image
+        env:
+          ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+          IMAGE_REPO: ${{ secrets.ACR_IMAGE_REPO }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -f ltr/Dockerfile -t "$ACR_LOGIN_SERVER/$IMAGE_REPO:$IMAGE_TAG" ltr
+          docker push "$ACR_LOGIN_SERVER/$IMAGE_REPO:$IMAGE_TAG"
+          echo "IMAGE_FULL=$ACR_LOGIN_SERVER/$IMAGE_REPO:$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Deploy image to Azure App Service (Container)
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+        run: |
+          az webapp config appsettings set \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$WEBAPP_NAME" \
+            --settings WEBSITES_PORT=3000
+
+          az webapp config container set \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$WEBAPP_NAME" \
+            --docker-custom-image-name "$IMAGE_FULL" \
+            --docker-registry-server-url "https://$ACR_LOGIN_SERVER" \
+            --docker-registry-server-user "$ACR_USERNAME" \
+            --docker-registry-server-password "$ACR_PASSWORD"

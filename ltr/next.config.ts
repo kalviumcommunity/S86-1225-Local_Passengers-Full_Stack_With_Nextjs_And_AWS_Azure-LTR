@@ -4,10 +4,14 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
 
+  turbopack: {
+    root: process.cwd(),
+  },
+
   /**
    * Security Headers Configuration
    * Implements OWASP best practices for web application security
-   * 
+   *
    * References:
    * - OWASP Secure Headers Project
    * - Next.js Security Best Practices
@@ -76,7 +80,8 @@ const nextConfig: NextConfig = {
           // Controls which browser features and APIs can be used
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(self), interest-cohort=()",
+            value:
+              "camera=(), microphone=(), geolocation=(self), interest-cohort=()",
           },
 
           // X-DNS-Prefetch-Control
