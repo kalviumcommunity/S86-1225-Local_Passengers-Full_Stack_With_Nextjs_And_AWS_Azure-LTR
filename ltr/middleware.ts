@@ -39,6 +39,17 @@ const protectedRoutes = {
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Optional HTTPS enforcement (recommended to also enable at the platform level)
+  // Works behind proxies/load balancers by checking x-forwarded-proto.
+  if (process.env.FORCE_HTTPS === "true") {
+    const forwardedProto = req.headers.get("x-forwarded-proto");
+    if (forwardedProto === "http") {
+      const url = req.nextUrl.clone();
+      url.protocol = "https:";
+      return NextResponse.redirect(url, 308);
+    }
+  }
+
   // API-level RBAC handling
   const requiresAdmin = protectedRoutes.admin.some((route) =>
     pathname.startsWith(route)

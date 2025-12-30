@@ -164,3 +164,71 @@ Required GitHub secrets:
 - App Service “Container settings” showing the image
 - Live URL working in browser
 
+## Domain & SSL Setup (Azure DNS + App Service)
+
+This section documents how to connect a custom domain and enable HTTPS for the deployed Azure App Service (Container).
+
+### 1) Connect your domain to Azure DNS (or use your registrar DNS)
+
+Option A — Azure DNS Zone:
+
+- Create an Azure DNS Zone for your domain (e.g., `example.com`).
+- Copy the NS records from Azure DNS.
+- Update nameservers in your registrar to the Azure DNS NS values.
+
+Option B — Keep DNS at registrar:
+
+- You can keep DNS at Namecheap/GoDaddy/etc. and still add the required CNAME/TXT records there.
+
+### 2) Add DNS records for App Service custom domain
+
+In Azure Portal → App Service → Custom domains:
+
+- Add your domain (root or subdomain).
+- Azure will prompt you to add verification records.
+
+Typical records you’ll add:
+
+- `CNAME` (for a subdomain like `www`):
+	- Host/Name: `www`
+	- Value/Target: `<your-app>.azurewebsites.net`
+
+- `TXT` (domain ownership verification):
+	- Host/Name: `asuid.www` (or as instructed by Azure)
+	- Value: (provided by Azure)
+
+For apex/root domain (`example.com`), Azure commonly uses an `A` record to an App Service IP plus a TXT verification record.
+
+### 3) Issue and bind an SSL certificate
+
+Use an App Service Managed Certificate (simple + auto-renew):
+
+- Azure Portal → App Service → TLS/SSL settings
+- Create “App Service Managed Certificate”
+- Bind it to your custom domain under “TLS/SSL bindings”
+
+### 4) Force HTTPS
+
+Do both (recommended):
+
+- Azure Portal → App Service → TLS/SSL settings → **HTTPS Only: ON**
+- App-level redirect support is included via middleware when `FORCE_HTTPS=true` (checks `x-forwarded-proto`).
+
+### 5) Verify
+
+- Visit `https://<your-domain>` and confirm the browser shows the HTTPS padlock.
+- Optional: run an SSL Labs check: https://www.ssllabs.com/ssltest/
+
+### Evidence to capture (screenshots)
+
+- DNS records (CNAME/TXT and/or A record) in Azure DNS or your registrar
+- App Service custom domain added successfully
+- Certificate status / TLS binding
+- Browser showing `https://` with padlock
+
+### Reflection (what to mention)
+
+- Renewal: App Service Managed Certificates auto-renew (reduced operational overhead)
+- Multi-env: use subdomains like `dev.<domain>` / `staging.<domain>` / `api.<domain>`
+- Cost/maintenance: DNS hosting + App Service plan tier requirements for certain TLS features
+
