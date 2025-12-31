@@ -10,6 +10,38 @@ Run the development server:
 npm run dev
 ```
 
+## Unit Testing (Jest + React Testing Library)
+
+This repo uses **Jest** for unit tests and **React Testing Library (RTL)** for UI/component tests.
+
+### Setup
+
+- Jest config: `jest.config.cjs`
+- RTL/Jest DOM setup: `jest.setup.ts`
+
+### Run tests
+
+From the `ltr/` directory:
+
+```bash
+npm test
+```
+
+Run with coverage (enforces 80% thresholds for the covered files):
+
+```bash
+npm run test:coverage
+```
+
+### Sample tests included
+
+- Logger unit tests: `src/lib/__tests__/logger.test.ts`
+- Button component tests: `src/components/ui/__tests__/Button.test.tsx`
+
+### CI integration
+
+GitHub Actions runs unit tests with coverage on PRs via `.github/workflows/ci.yml`.
+
 ## Secure Environment Setup on Cloud (AWS Secrets Manager)
 
 Production secrets (DB URLs, JWT secrets, API keys) should not live in plaintext `.env` files.
