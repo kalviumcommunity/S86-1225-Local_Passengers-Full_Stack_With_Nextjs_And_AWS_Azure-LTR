@@ -158,6 +158,90 @@ Required GitHub secrets:
 - Cold starts: smaller images and fewer runtime dependencies reduce startup time.
 - Health checks: prefer a lightweight endpoint (e.g., `/api/health/db` if DB is reachable) and configure App Service health check path.
 
+## Logging & Monitoring (CloudWatch / Azure Monitor)
+
+This repo emits **structured JSON logs** to stdout/stderr so they can be ingested by either AWS CloudWatch Logs or Azure Monitor/App Service Log Stream.
+
+### Structured logs (JSON)
+
+- Logger implementation: `src/lib/logger.ts`
+- API routes log using `logApiEvent()` / `logApiError()`
+- Logs include a **correlation ID** in `requestId` (derived from the `x-request-id` header)
+
+Example log line (shape):
+
+```json
+{
+	"timestamp": "2025-12-31T12:00:00.000Z",
+	"level": "info",
+	"message": "Alert created",
+	"meta": {
+		"requestId": "<uuid>",
+		"endpoint": "http://.../api/alerts",
+		"method": "POST",
+		"status": 201,
+		"durationMs": 42,
+		"userId": "123"
+	}
+}
+```
+
+### Correlation IDs (request tracing)
+
+- Middleware sets a correlation header for all API requests: `x-request-id` (generated if missing)
+- The same ID is returned back to clients in the response header `x-request-id`
+- In cloud logging tools, filter/group by `requestId` to trace a single request across multiple logs
+
+Middleware file: `middleware.ts`
+
+### AWS CloudWatch (typical container setup)
+
+If running on ECS/Fargate or EC2 with Docker, configure a log driver (example):
+
+```json
+"logConfiguration": {
+	"logDriver": "awslogs",
+	"options": {
+		"awslogs-group": "/ecs/nextjs-app",
+		"awslogs-region": "ap-south-1",
+		"awslogs-stream-prefix": "ecs"
+	}
+}
+```
+
+Common follow-ups:
+
+- Create a **Metric Filter** to count errors (filter: `$.level = "error"`)
+- Add a CloudWatch **Alarm** for spikes (example: `> 10 errors / 5 min`)
+- Set log retention (7/14/30 days) on the log group
+
+### Azure Monitor / App Service
+
+For Azure App Service (Container):
+
+- Enable log streaming: App Service → Monitoring → Log stream
+- (Optional) Send logs to Log Analytics: App Service → Diagnostic settings → Log Analytics workspace
+
+Example Kusto query for errors:
+
+```kusto
+AppServiceConsoleLogs
+| where ResultDescription has '"level":"error"'
+| summarize count() by bin(TimeGenerated, 1h)
+```
+
+Suggested alerts:
+
+- `error` logs > 10 in 5 minutes
+- average request duration > 2000ms (if you add duration-based dashboards)
+- CPU > 80% for 5 minutes
+
+### Retention (cost + compliance)
+
+- Operational logs: 7–14 days
+- Audit/security logs (if required): 90+ days
+- Archive older logs to S3 (AWS) or Blob Storage (Azure) if needed
+
 ### Evidence to capture (screenshots)
 
 - ACR repository + pushed image tag

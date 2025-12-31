@@ -39,6 +39,32 @@ const protectedRoutes = {
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Correlation ID for tracing logs across services/platforms (CloudWatch/Azure Monitor)
+  const requestId = req.headers.get("x-request-id") ?? crypto.randomUUID();
+  const baseHeaders = new Headers(req.headers);
+  baseHeaders.set("x-request-id", requestId);
+
+  const next = (headers: Headers = baseHeaders) => {
+    const res = NextResponse.next({ request: { headers } });
+    res.headers.set("x-request-id", requestId);
+    return res;
+  };
+
+  const json = (
+    body: Parameters<typeof NextResponse.json>[0],
+    init?: Parameters<typeof NextResponse.json>[1]
+  ) => {
+    const res = NextResponse.json(body, init);
+    res.headers.set("x-request-id", requestId);
+    return res;
+  };
+
+  const redirect = (url: URL, status?: number) => {
+    const res = NextResponse.redirect(url, status);
+    res.headers.set("x-request-id", requestId);
+    return res;
+  };
+
   // Optional HTTPS enforcement (recommended to also enable at the platform level)
   // Works behind proxies/load balancers by checking x-forwarded-proto.
   if (process.env.FORCE_HTTPS === "true") {
@@ -46,7 +72,7 @@ export function middleware(req: NextRequest) {
     if (forwardedProto === "http") {
       const url = req.nextUrl.clone();
       url.protocol = "https:";
-      return NextResponse.redirect(url, 308);
+      return redirect(url, 308);
     }
   }
 
@@ -68,7 +94,7 @@ export function middleware(req: NextRequest) {
 
   // Skip auth check for refresh endpoint to avoid circular dependency
   if (pathname === "/api/auth/refresh") {
-    return NextResponse.next();
+    return next();
   }
 
   // If neither API nor routing-demo pages require auth, continue
@@ -78,7 +104,7 @@ export function middleware(req: NextRequest) {
     !requiresAuth &&
     !isRoutingDemoProtected
   ) {
-    return NextResponse.next();
+    return next();
   }
 
   // Extract access token from Authorization header or cookies
@@ -88,11 +114,11 @@ export function middleware(req: NextRequest) {
     // If it's a routing-demo page, redirect to the demo login page
     if (isRoutingDemoProtected) {
       const loginUrl = new URL("/routing-demo/login", req.url);
-      return NextResponse.redirect(loginUrl);
+      return redirect(loginUrl);
     }
 
     // Otherwise return JSON 401 for API
-    return NextResponse.json(
+    return json(
       {
         success: false,
         message: "Authentication required. Token missing.",
@@ -114,7 +140,7 @@ export function middleware(req: NextRequest) {
 
     // API role checks
     if (requiresAdmin && decoded.role !== "ADMIN") {
-      return NextResponse.json(
+      return json(
         {
           success: false,
           message: "Access denied. Admin privileges required.",
@@ -129,7 +155,7 @@ export function middleware(req: NextRequest) {
       decoded.role !== "STATION_MASTER" &&
       decoded.role !== "ADMIN"
     ) {
-      return NextResponse.json(
+      return json(
         {
           success: false,
           message: "Access denied. Station Master privileges required.",
@@ -141,28 +167,28 @@ export function middleware(req: NextRequest) {
 
     // For API requests attach user headers
     if (requiresAdmin || requiresStationMaster || requiresAuth) {
-      const requestHeaders = new Headers(req.headers);
+      const requestHeaders = new Headers(baseHeaders);
       requestHeaders.set("x-user-id", decoded.userId.toString());
       requestHeaders.set("x-user-email", decoded.email);
       requestHeaders.set("x-user-role", decoded.role);
-      return NextResponse.next({ request: { headers: requestHeaders } });
+      return next(requestHeaders);
     }
 
     // For routing-demo pages, allow access (no role checks) after successful verification
     if (isRoutingDemoProtected) {
-      return NextResponse.next();
+      return next();
     }
 
-    return NextResponse.next();
+    return next();
   } catch (error) {
     // Invalid or expired token
     if (isRoutingDemoProtected) {
       const loginUrl = new URL("/routing-demo/login", req.url);
-      return NextResponse.redirect(loginUrl);
+      return redirect(loginUrl);
     }
 
     // For API calls, return 401 with suggestion to refresh token
-    return NextResponse.json(
+    return json(
       {
         success: false,
         message: "Invalid or expired access token.",
@@ -177,14 +203,7 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/api/admin/:path*",
-    "/api/station-master/:path*",
-    "/api/users/:path*",
-    "/api/alerts/:path*",
-    "/api/trains/:path*",
-    "/api/reroutes/:path*",
-    "/api/upload/:path*",
-    "/api/files/:path*",
+    "/api/:path*",
     // routing demo pages
     "/routing-demo/dashboard/:path*",
     "/routing-demo/users/:path*",

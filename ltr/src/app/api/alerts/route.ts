@@ -10,6 +10,7 @@ import {
 import { ERROR_CODES } from "@/lib/errorCodes";
 import { createAlertSchema } from "@/lib/schemas";
 import { ZodError } from "zod";
+import { logApiError, logApiEvent } from "@/lib/logger";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -41,10 +42,17 @@ async function verifyAuth(req: NextRequest) {
  * Access: Authenticated User
  */
 export async function GET(req: NextRequest) {
+  const start = Date.now();
+  logApiEvent("info", req, "Alerts list request received");
+
   try {
     const authUser = await verifyAuth(req);
 
     if (!authUser) {
+      logApiEvent("warn", req, "Alerts list unauthorized", {
+        durationMs: Date.now() - start,
+        status: 401,
+      });
       return sendAuthError("Not authenticated");
     }
 
@@ -58,10 +66,17 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    logApiEvent("info", req, "Alerts list success", {
+      durationMs: Date.now() - start,
+      status: 200,
+      count: alerts.length,
+    });
     return sendSuccess(alerts, "Alerts fetched successfully", 200);
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("Get alerts error:", error);
+    logApiError(req, error, "Alerts list failed", {
+      durationMs: Date.now() - start,
+      status: 500,
+    });
     return sendError(
       "Failed to fetch alerts",
       ERROR_CODES.DATABASE_ERROR,
@@ -77,10 +92,17 @@ export async function GET(req: NextRequest) {
  * Access: Authenticated User
  */
 export async function POST(req: NextRequest) {
+  const start = Date.now();
+  logApiEvent("info", req, "Alert create request received");
+
   try {
     const authUser = await verifyAuth(req);
 
     if (!authUser) {
+      logApiEvent("warn", req, "Alert create unauthorized", {
+        durationMs: Date.now() - start,
+        status: 401,
+      });
       return sendAuthError("Not authenticated");
     }
 
@@ -103,10 +125,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    logApiEvent("info", req, "Alert created", {
+      durationMs: Date.now() - start,
+      status: 201,
+      alertId: alert.id,
+      userId: authUser.userId,
+    });
     return sendSuccess(alert, "Alert created successfully", 201);
   } catch (error) {
     // Handle Zod validation errors
     if (error instanceof ZodError) {
+      logApiEvent("warn", req, "Alert create validation failed", {
+        durationMs: Date.now() - start,
+        status: 400,
+        issues: error.issues,
+      });
       return sendValidationError(
         "Validation failed",
         error.issues.map((e) => ({
@@ -116,8 +149,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // eslint-disable-next-line no-console
-    console.error("Create alert error:", error);
+    logApiError(req, error, "Alert create failed", {
+      durationMs: Date.now() - start,
+      status: 500,
+    });
     return sendError(
       "Failed to create alert",
       ERROR_CODES.ALERT_CREATION_FAILED,

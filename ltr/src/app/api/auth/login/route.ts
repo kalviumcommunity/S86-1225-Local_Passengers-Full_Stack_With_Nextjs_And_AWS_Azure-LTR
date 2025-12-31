@@ -5,6 +5,7 @@ import { userLoginSchema } from "@/lib/schemas";
 import { ZodError } from "zod";
 import { generateAccessToken, generateRefreshToken } from "@/lib/jwt";
 import { setAuthCookies } from "@/lib/tokenStorage";
+import { logApiError, logApiEvent } from "@/lib/logger";
 
 /**
  * POST /api/auth/login
@@ -24,6 +25,9 @@ import { setAuthCookies } from "@/lib/tokenStorage";
  * - Refresh token for seamless re-authentication
  */
 export async function POST(req: NextRequest) {
+  const start = Date.now();
+  logApiEvent("info", req, "Auth login request received");
+
   try {
     const body = await req.json();
     const { email, password } = userLoginSchema.parse(body);
@@ -34,6 +38,9 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
+      logApiEvent("warn", req, "Login failed: invalid credentials", {
+        durationMs: Date.now() - start,
+      });
       return NextResponse.json(
         { message: "Invalid credentials" },
         { status: 401 }
@@ -43,6 +50,9 @@ export async function POST(req: NextRequest) {
     // Verify password
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
+      logApiEvent("warn", req, "Login failed: invalid credentials", {
+        durationMs: Date.now() - start,
+      });
       return NextResponse.json(
         { message: "Invalid credentials" },
         { status: 401 }
@@ -77,9 +87,19 @@ export async function POST(req: NextRequest) {
     // Set secure HTTP-only cookies
     setAuthCookies(response, accessToken, refreshToken);
 
+    logApiEvent("info", req, "Login successful", {
+      durationMs: Date.now() - start,
+      userId: user.id,
+      role: user.role,
+    });
+
     return response;
   } catch (error) {
     if (error instanceof ZodError) {
+      logApiEvent("warn", req, "Login request validation failed", {
+        durationMs: Date.now() - start,
+        issues: error.issues,
+      });
       return NextResponse.json(
         { message: "Validation failed", errors: error.issues },
         { status: 400 }
@@ -87,6 +107,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Error occurred
+    logApiError(req, error, "Login request failed", {
+      durationMs: Date.now() - start,
+    });
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }

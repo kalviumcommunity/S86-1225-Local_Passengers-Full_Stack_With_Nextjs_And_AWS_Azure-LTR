@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSecretsDiagnostics, getSecretValue } from "@/lib/cloudSecrets";
+import { logApiError, logApiEvent } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -12,11 +13,18 @@ export const runtime = "nodejs";
  * In production, requires `x-debug-token` header matching `SECRETS_DEBUG_TOKEN`.
  */
 export async function GET(req: Request) {
+  const start = Date.now();
+  logApiEvent("info", req, "Secrets health check received");
+
   const expectedToken = process.env.SECRETS_DEBUG_TOKEN;
   const isProd = process.env.NODE_ENV === "production";
 
   if (isProd) {
     if (!expectedToken) {
+      logApiEvent("warn", req, "Secrets health check not enabled in prod", {
+        durationMs: Date.now() - start,
+        status: 404,
+      });
       return NextResponse.json(
         { success: false, message: "Not found" },
         { status: 404 }
@@ -24,6 +32,10 @@ export async function GET(req: Request) {
     }
     const provided = req.headers.get("x-debug-token");
     if (!provided || provided !== expectedToken) {
+      logApiEvent("warn", req, "Secrets health check forbidden", {
+        durationMs: Date.now() - start,
+        status: 403,
+      });
       return NextResponse.json(
         { success: false, message: "Forbidden" },
         { status: 403 }
@@ -41,6 +53,12 @@ export async function GET(req: Request) {
       await getSecretValue("JWT_REFRESH_SECRET")
     );
 
+    logApiEvent("info", req, "Secrets health check ok", {
+      durationMs: Date.now() - start,
+      status: 200,
+      provider: diag.provider,
+    });
+
     return NextResponse.json({
       success: true,
       provider: diag.provider,
@@ -53,6 +71,10 @@ export async function GET(req: Request) {
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
+    logApiError(req, error, "Secrets health check failed", {
+      durationMs: Date.now() - start,
+      status: 500,
+    });
     return NextResponse.json(
       {
         success: false,
