@@ -1,3 +1,5 @@
+/** @jest-environment jsdom */
+
 import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render, screen } from "@testing-library/react";
 import Button from "../Button";

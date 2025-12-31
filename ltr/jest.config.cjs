@@ -7,12 +7,14 @@ const createJestConfig = nextJest({
 
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
-  testEnvironment: 'jsdom',
+  testEnvironment: 'node',
   clearMocks: true,
   collectCoverage: true,
   collectCoverageFrom: [
     'src/components/ui/Button.tsx',
     'src/lib/logger.ts',
+    'src/app/api/health/secrets/route.ts',
+    'src/app/api/health/db/route.ts',
   ],
   coverageThreshold: {
     global: {

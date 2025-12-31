@@ -42,6 +42,33 @@ npm run test:coverage
 
 GitHub Actions runs unit tests with coverage on PRs via `.github/workflows/ci.yml`.
 
+## Integration Testing (API Routes)
+
+This repo also includes **integration-style tests for Next.js App Router API routes**.
+Instead of spinning up a server, the tests import the route handler (e.g. `GET`) and call it with a real `Request` object, while mocking external dependencies.
+
+### API routes covered
+
+- `GET /api/health/secrets` (mocks `src/lib/cloudSecrets.ts`)
+- `GET /api/health/db` (mocks `src/lib/dbConnection.ts`)
+
+Tests are in:
+
+- `test/api/health-secrets.integration.test.ts`
+- `test/api/health-db.integration.test.ts`
+
+### What these tests verify
+
+- Correct HTTP status codes (200/403/404/500)
+- Response JSON shape (`success`, `message`, `timestamp`, etc.)
+- Production-only access control for secrets endpoint (`SECRETS_DEBUG_TOKEN`)
+
+Run them locally:
+
+```bash
+npm run test:coverage
+```
+
 ## Secure Environment Setup on Cloud (AWS Secrets Manager)
 
 Production secrets (DB URLs, JWT secrets, API keys) should not live in plaintext `.env` files.
