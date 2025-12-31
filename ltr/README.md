@@ -10,6 +10,65 @@ Run the development server:
 npm run dev
 ```
 
+## Unit Testing (Jest + React Testing Library)
+
+This repo uses **Jest** for unit tests and **React Testing Library (RTL)** for UI/component tests.
+
+### Setup
+
+- Jest config: `jest.config.cjs`
+- RTL/Jest DOM setup: `jest.setup.ts`
+
+### Run tests
+
+From the `ltr/` directory:
+
+```bash
+npm test
+```
+
+Run with coverage (enforces 80% thresholds for the covered files):
+
+```bash
+npm run test:coverage
+```
+
+### Sample tests included
+
+- Logger unit tests: `src/lib/__tests__/logger.test.ts`
+- Button component tests: `src/components/ui/__tests__/Button.test.tsx`
+
+### CI integration
+
+GitHub Actions runs unit tests with coverage on PRs via `.github/workflows/ci.yml`.
+
+## Integration Testing (API Routes)
+
+This repo also includes **integration-style tests for Next.js App Router API routes**.
+Instead of spinning up a server, the tests import the route handler (e.g. `GET`) and call it with a real `Request` object, while mocking external dependencies.
+
+### API routes covered
+
+- `GET /api/health/secrets` (mocks `src/lib/cloudSecrets.ts`)
+- `GET /api/health/db` (mocks `src/lib/dbConnection.ts`)
+
+Tests are in:
+
+- `test/api/health-secrets.integration.test.ts`
+- `test/api/health-db.integration.test.ts`
+
+### What these tests verify
+
+- Correct HTTP status codes (200/403/404/500)
+- Response JSON shape (`success`, `message`, `timestamp`, etc.)
+- Production-only access control for secrets endpoint (`SECRETS_DEBUG_TOKEN`)
+
+Run them locally:
+
+```bash
+npm run test:coverage
+```
+
 ## Secure Environment Setup on Cloud (AWS Secrets Manager)
 
 Production secrets (DB URLs, JWT secrets, API keys) should not live in plaintext `.env` files.
