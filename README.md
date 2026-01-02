@@ -1,286 +1,103 @@
-# S86-1225-Local_Passengers-Full_Stack_With_Nextjs_And_AWS_Azure-LTR
-**Project Plan – LocalPassengers: Real-Time Train Delay & Reroute System**
+# LocalPassengers - Real-Time Train Delay & Reroute System
 
 ## Screenshot
 ![Local Dev](./ltr/screenshots/local-dev.png)
 
-
-**1.Problem Statement & Solution Overview**
-
-As a team, we observed that millions of local train commuters in India face frequent delays, platform changes, and unreliable updates. These issues cause missed connections, longer travel times, and daily uncertainty. Commuters often rely on fragmented information sources or word-of-mouth updates at stations, which are neither consistent nor reliable.
-
-To address this challenge, we are building LocalPassengers, a web-based system designed to deliver accurate, real-time information and intelligent rerouting assistance. Our solution focuses on improving the commuting experience through clarity, predictability, and reliable decision-making support.
-
-LocalPassengers will collect and display real-time data such as train delays, expected arrival times, platform changes, and cancellations. The system will present this information in a clean, easy-to-understand interface so that users can immediately know the latest status of their intended train.
-
-In addition to showing live updates, the system will also generate reroute suggestions when trains are delayed or unavailable. These recommendations will include alternate trains on the same route, nearby stations with earlier departures, and smarter combinations of slow/fast trains. This allows commuters to adjust their travel plan instantly instead of waiting blindly at the station.
-
-The platform will also provide a personalized dashboard, where users can save frequently used trains or routes. Once a train is saved, the system will proactively notify the user about delays or platform changes, ensuring they stay informed before even reaching the station.
-
 ---
-**2. Scope & Boundaries**
 
- **In Scope**
+## 🎯 Quick Overview
 
-* User authentication
-* Train search and real-time status
-* Reroute suggestions
-* User dashboard
-* Alerts for saved trains
-* Backend APIs with a database
-* Responsive UI and cloud deployment
+**Problem:** Local train commuters face delays, platform changes, and unreliable updates  
+**Solution:** Real-time train status, reroute suggestions, and personalized alerts
 
-**Out of Scope**
+**Tech Stack:** Next.js 16, React 19, TypeScript, PostgreSQL, Redis, Tailwind CSS, Docker, AWS/Azure
 
-* Mobile application
-* AI-based predictions
-* Offline mode
-* GPS-based live tracking
+**Team:** Chaithanya (Frontend) | Vaishnavi (Backend) | Arun Kumar (DevOps)
 
 ---
 
-**3. Team Roles & Responsibilities**
-
-* Chaithanya will focus on frontend development, building the user interface and key pages.
-* Vaishnavi will work on backend development, including the database, APIs, and business logic.
-* Arun kumar will handle DevOps, testing, and deployment.
-*
-  We will collaborate closely, share blockers, and support one another throughout the sprint.
+## MVP Features
+✅ Login & Signup | ✅ Train Search | ✅ Live Train Status | ✅ Reroute Suggestions | ✅ User Dashboard | ✅ Saved Trains & Alerts
 
 ---
 
-**4. Sprint Timeline (4 Weeks)**
+## 🛠️ Key Implementations Summary
 
-**Week 1 – Setup & Planning**
-
-We will complete project setup, define architecture, design the database, finalize HLD/LLD, and implement basic authentication.
-
-**Week 2 – Core Development**
-
-We will build the key backend APIs, implement train search and live status features, develop the reroute logic, and build the main UI screens.
-
-**Week 3 – Integration & Deployment**
-
-We will integrate the frontend and backend, configure cloud services, set up CI/CD, add security layers, and begin testing.
-
-**Week 4 – Finalization & Submission**
-
-We will polish the UI, fix issues, complete documentation, conduct final testing, and deploy the MVP for submission.
-
----
-
-**5. MVP (Minimum Viable Product)**
-
-Our MVP will include:
-
-* Login and signup
-* Train search
-* Live train status (delay, platform)
-* Reroute suggestions
-* Dashboard for saved trains
-* Basic notifications
+| # | Feature | Description | Result |
+|---|---------|-------------|--------|
+| 1 | **TypeScript & Code Quality** | Strict TS, ESLint, Prettier, Husky hooks | Bug prevention, consistency |
+| 2 | **Responsive Design** | Tailwind CSS, dark mode, breakpoints | Mobile-first UI |
+| 3 | **Git Workflow** | Branch naming, PR templates, protection | Clean collaboration |
+| 4 | **Docker** | 3 services (Next.js, PostgreSQL, Redis) | Consistent dev environment |
+| 5 | **CI/CD Pipeline** | 6 stages: Lint, Test, Build, Deploy, Docker, Security | Automated testing |
+| 6 | **Cloud Storage** | AWS S3 presigned URLs | Secure file uploads |
+| 7 | **UI Feedback** | Toasts, modals, loaders | Clear user feedback |
+| 8 | **Error Handling** | Loading skeletons, error boundaries | Graceful failures |
+| 9 | **Email** | AWS SES/SendGrid for alerts | Automated notifications |
+| 10 | **Database** | PostgreSQL + Prisma ORM | Type-safe queries |
+| 11 | **API Routes** | RESTful design, consistent naming | Predictable endpoints |
+| 12 | **Validation** | Zod schemas | Input sanitization |
+| 13 | **State Management** | Context + Hooks (Auth, UI) | Clean state sharing |
+| 14 | **Authentication** | JWT + bcrypt + RBAC | Secure auth system |
+| 15 | **Caching** | Redis for sessions & data | Faster responses |
+| 16 | **Data Fetching** | SWR with auto-revalidation | Real-time updates |
+| 17 | **Testing** | Jest + RTL + integration tests | Code reliability |
+| 18 | **Cloud Secrets** | AWS Secrets Manager / Azure Key Vault | Secure credentials |
 
 ---
 
-**6. Functional Requirements**
+## 🚀 Quick Start
 
-* Users must be able to register and log in.
-* Users should be able to search for a train and view its live status.
-* The system should show reroute suggestions when delays occur.
-* Users must be able to save trains and receive alerts.
+```bash
+# Clone and install
+git clone <repo-url>
+cd ltr
+npm install
 
----
+# Setup environment
+cp .env.example .env.local
+# Edit .env.local with your credentials
 
-**7. Non-Functional Requirements**
+# Run migrations
+npm run prisma:migrate
 
-* Fast API responses
-* Secure authentication
-* Responsive design on all devices
-* Reliable cloud deployment
-* Basic logging and error handling
-
----
-
-**8. Success Metrics**
-
-* All MVP features completed and functional
-* Successful deployment with no critical issues
-* Smooth end-to-end user experience
-* Positive feedback during demo
-* Stable performance during testing
-
----
-
-**9. Risks & Mitigation**
-
-* If external data sources fail, we will use fallback mock data.
-* If deployment issues arise, we will begin DevOps tasks early.
-* If delays occur in development, we will redistribute tasks within the team.
-
----
-
-**10. TypeScript & ESLint Configuration**
-
-### Overview
-
-To ensure code quality, consistency, and catch errors early in the development process, we have implemented a comprehensive TypeScript and ESLint configuration with Prettier for automatic code formatting and Husky with lint-staged for pre-commit hooks.
-
-### Why Strict TypeScript Configuration?
-
-Strict TypeScript mode significantly reduces runtime bugs by:
-
-- **Type Safety**: `strict: true` enforces strict null checks and ensures all types are explicitly defined
-- **Implicit Any Prevention**: `noImplicitAny: true` prevents variables from having the `any` type, requiring explicit type annotations
-- **Unused Code Detection**: `noUnusedLocals: true` and `noUnusedParameters: true` identify and remove dead code that could cause confusion or bloat
-- **Casing Consistency**: `forceConsistentCasingInFileNames: true` prevents import errors caused by incorrect file name casing on case-sensitive systems
-- **Skip Library Checks**: `skipLibCheck: true` speeds up compilation by skipping type checking of declaration files
-
-### TypeScript Configuration (`tsconfig.json`)
-
-The following strict compiler options have been enabled:
-
-```json
-{
-  "compilerOptions": {
-    "strict": true,
-    "noImplicitAny": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true
-  }
-}
+# Start development
+npm run dev
+# OR use Docker
+docker-compose up --build
 ```
 
-### ESLint Configuration (`eslint.config.mjs`)
+Visit: http://localhost:5174
 
-Our project uses ESLint's flat config format (the modern approach). The configuration includes strict rules that enforce consistent code style and catch potential problems:
+---
 
-```javascript
-{
-  rules: {
-    "no-console": "error",
-    "semi": ["error", "always"],
-    "quotes": ["error", "double"],
-  },
-}
-```
+## 📋 Detailed Feature Documentation
 
-**ENV Managment**
-- `Set up .env.local for real secrets and .env.example for placeholders to support team setup.`
-- `Updated .gitignore to ensure environment secrets are never committed.`
-- `Documented server-only vs client-exposed variables and demonstrated safe process.env usage in code.`
+---
 
-**Rules Explanation:**
+## TypeScript & Code Quality
 
-- `no-console`: **ERROR** - Blocks console.log statements from being committed (helps keep production code clean)
-- `semi`: **ERROR** - Requires semicolons at the end of statements (prevents potential issues with automatic semicolon insertion)
-- `quotes`: **ERROR** - Enforces double quotes throughout the codebase (improves consistency)
-- These rules integrate with Next.js core-web-vitals recommendations
+**Implementation:**
+- **Strict TypeScript** - Enforces type safety, prevents implicit any, detects unused code
+- **ESLint** - Rules for consistent code style (no console logs, semicolons, double quotes)
+- **Prettier** - Automatic code formatting
+- **Husky + lint-staged** - Pre-commit hooks run linting and formatting automatically
+- **ENV Management** - `.env.local` for secrets, `.env.example` for team setup
 
-### Prettier Configuration (`.prettierrc`)
+**Benefits:** Catches bugs early, ensures code consistency, prevents style debates, automates quality checks
 
-Prettier automatically formats code consistently without debates:
+**Demo:** Visit `/context-demo/responsive-demo` for responsive design + theme toggle
 
-```json
-{
-  "singleQuote": false,
-  "semi": true,
-  "tabWidth": 2,
-  "trailingComma": "es5"
-}
-```
-
-**Options:**
-
-- `singleQuote: false`: Uses double quotes (aligns with ESLint rules)
-- `semi: true`: Adds semicolons automatically
-- `tabWidth: 2`: Uses 2 spaces for indentation
-- `trailingComma: "es5"`: Adds trailing commas in objects and arrays (valid ES5 syntax)
-
-### Pre-Commit Hooks with Husky & lint-staged
-
-We use Husky and lint-staged to automatically run linting and formatting before commits, ensuring no code quality issues slip through.
-
-**Setup:**
-
-1. Husky is initialized and manages git hooks
-2. The `.husky/pre-commit` hook runs lint-staged on staged files
-3. lint-staged configuration in `package.json`:
-
-```json
-{
-  "lint-staged": {
-    "*.{ts,tsx,js,jsx}": ["eslint --fix", "prettier --write"]
-  }
-}
-```
-
-This configuration automatically:
-- Runs ESLint with `--fix` to auto-correct issues
-- Runs Prettier to format code
-- Only applies to staged TypeScript and JavaScript files
-- Prevents committing code that violates our standards
-
-### Installation & Setup
-
-All packages have been installed and configured:
-
-**Installed Packages:**
-- `prettier`: Code formatter
-- `eslint-plugin-prettier`: ESLint plugin for Prettier
-- `eslint-config-prettier`: ESLint config to disable conflicting rules
-- `husky`: Git hooks manager
-- `lint-staged`: Run linters on staged files
-
-### How to Use
-
-1. **Development**: Code as normal. ESLint and Prettier will highlight issues in your editor.
-2. **Committing**: When you run `git commit`, the pre-commit hook automatically:
-   - Formats your code with Prettier
-   - Fixes auto-fixable ESLint issues
-   - Prevents commit if there are remaining violations
 ---
 
 ## Tailwind Responsive Layout & Theme
 
-We added a Tailwind configuration and demo pages to illustrate responsive design and theme-aware UI.
+- **Configuration:** Custom breakpoints (sm: 640px, md: 768px, lg: 1024px, xl: 1280px)
+- **Dark Mode:** Class-based with persisted preference in `localStorage`
+- **Theme Toggle:** Integrated with `UIContext`
+- **Usage:** Utility classes with `dark:` variants (e.g., `bg-white dark:bg-gray-800`)
 
-- **Tailwind config:** `ltr/tailwind.config.cjs` sets `darkMode: 'class'`, custom `brand` colors, and breakpoints `sm/640`, `md/768`, `lg/1024`, `xl/1280`.
-- **CSS entry:** `ltr/src/app/globals.css` uses `@tailwind base; @tailwind components; @tailwind utilities;` and keeps theme CSS variables for graceful theming.
-- **Demo page:** open `/context-demo/responsive-demo` in the running app to view responsive grid cards and a theme toggle that uses the existing `UIContext`.
-
-Implementation notes
-- The `UIContext` provides `theme` and `toggleTheme()` already; the theme is persisted to `localStorage` and toggles the `dark` class on `document.documentElement`, which works with Tailwind's `class`-based dark mode.
-- Use Tailwind utility classes with `dark:` variants, e.g., `bg-white dark:bg-gray-800`.
-
-How to test
-1. Start the app:
-
-```bash
-cd ltr
-npm install
-npm run dev
-```
-
-2. Visit:
-- http://localhost:5174/context-demo/responsive-demo — responsive + theme toggle demo
-- http://localhost:5174/context-demo/feedback-demo — feedback flow demo (toasts, modal, loader)
-
-Accessibility & reflections
-- Using `darkMode: 'class'` keeps control in JavaScript (good for persisted preference). Ensure color contrast for both themes; test with contrast checkers and different devices.
-- Breakpoints were chosen to match common device widths and are adjustable per product design.
-
-3. **Manual Check**: Run `npm run lint` to check for linting issues
-
-### Benefits for Team Consistency
-
-- **No Style Debates**: Prettier and ESLint remove subjective formatting decisions
-- **Early Error Detection**: Strict TypeScript catches bugs before runtime
-- **Clean Git History**: Only properly formatted code is committed
-- **Onboarding Ease**: New team members follow the same rules automatically
-- **Code Reviews**: Reviewers focus on logic, not style
-- **Prevents Bugs**: Catches common errors like unused variables and type issues
+**Result:** Responsive design across all devices with light/dark theme support
 
 ---
 
@@ -320,92 +137,51 @@ Our `main` branch is protected with:
 - Branch must be up-to-date before merging
 - Direct commits to `main` are blocked
 
----
 
-## Docker & Docker Compose Setup for Local Development
 
-### Overview
+## Docker & Docker Compose Setup
 
-This project uses Docker and Docker Compose to containerize the entire application stack — the Next.js app, PostgreSQL database, and Redis cache. This setup ensures a fully functional local environment that mirrors production and eliminates the "it works on my machine" problem. All team members can run the exact same containerized environment, ensuring consistency across development, testing, and production.
+**Architecture:** 3 containerized services (Next.js App, PostgreSQL, Redis) connected via Docker network
 
-### Architecture
+**Key Features:**
+- Multi-stage Dockerfile (reduces image size by ~50%)
+- Persistent volumes for database & cache
+- Health checks for all services
+- Service-to-service communication via service names
 
-The Docker setup includes three main services:
-
-1. **Next.js App** (`nextjs_app`): The frontend and backend API, running on port 3000
-2. **PostgreSQL** (`postgres_db`): The relational database, running on port 5432
-3. **Redis** (`redis_cache`): The caching layer, running on port 6379
-
-All services communicate through a custom Docker bridge network (`localnet`) and use named volumes for data persistence.
-
-### Files
-
-#### **Dockerfile**
-
-The `Dockerfile` uses a multi-stage build approach for optimal image size:
-
-- **Builder Stage**: Installs dependencies, builds the Next.js app, and compiles TypeScript
-- **Production Stage**: Copies only production dependencies and built artifacts, reducing the final image size
-
-Key features:
-- Uses lightweight `node:20-alpine` base image
-- Multi-stage build reduces final image size by ~50%
-- Sets `NODE_ENV=production` for optimal Next.js performance
-- Exposes port 3000 for the application
-
-#### **docker-compose.yml**
-
-Defines three services with health checks, environment variables, volumes, and networking:
-
-**App Service:**
-- Builds from the Dockerfile
-- Runs on port 3000
-- Depends on both db and redis services
-- Environment variables for database and cache URLs
-- Health check ensures the container is fully ready
-
-**PostgreSQL Service:**
-- Uses official `postgres:15-alpine` image
-- Runs on port 5432
-- Persists data using the `db_data` named volume
-- Health check verifies database readiness
-- Default credentials: `postgres:postgres`
-
-**Redis Service:**
-- Uses official `redis:7-alpine` image
-- Runs on port 6379
-- Persists data using the `redis_data` named volume
-- Health check via `redis-cli ping`
-
-**Networking:**
-- All services connected through `localnet` bridge network
-- Enables service-to-service communication via service names (e.g., `db:5432`, `redis:6379`)
-
-**Volumes:**
-- `db_data`: Persists PostgreSQL data across container restarts
-- `redis_data`: Persists Redis data across container restarts
-
-### Getting Started
-
-#### Prerequisites
-
-Ensure you have installed:
-- [Docker](https://docs.docker.com/get-docker/) (v20.10+)
-- [Docker Compose](https://docs.docker.com/compose/install/) (v2.0+)
-
-Verify installation:
+**Quick Start:**
 ```bash
-docker --version
-docker-compose --version
+# Start all services
+docker-compose up --build
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
 ```
 
+**Services:**
+- Next.js: http://localhost:3000
+- PostgreSQL: localhost:5432 (postgres/postgres)
+- Redis: localhost:6379
+
+**Result:** Consistent development environment across all team members
+
 ---
 
-## **Cloud Object Storage (AWS S3 / Azure Blob) & Upload Flow**
+## Cloud Object Storage (AWS S3 / Azure Blob)
 
-- **Purpose:** Store user-uploaded files (images, PDFs, attachments) securely and scalably using cloud object storage. This project includes a server-side presigned URL flow so clients can upload directly to the provider without exposing secrets.
+**Purpose:** Secure, scalable file uploads using presigned URLs
 
-- **Implemented in repo:** Server-side presigned upload is implemented at [ltr/src/app/api/upload/route.ts](ltr/src/app/api/upload/route.ts#L1-L200). It uses the AWS SDK v3 and returns a pre-signed PUT URL plus metadata (`uploadUrl`, `fileKey`, `publicUrl`, `expiresIn`).
+**Implementation:** Server generates presigned URLs → Client uploads directly to S3/Azure → No credential exposure
+
+**File:** [ltr/src/app/api/upload/route.ts](ltr/src/app/api/upload/route.ts)
+
+**Features:**
+- Server-side validation (file type, size)
+- Presigned URL with 60s expiry
+- Private bucket with IAM/SAS access control
 
 ### AWS S3 (recommended for this project)
 
@@ -427,231 +203,77 @@ IAM permissions (minimal):
 }
 
 Store credentials in `.env.local` (server only):
-
-- `AWS_REGION=ap-south-1`
-- `AWS_BUCKET_NAME=kalvium-app-storage`
-- `AWS_ACCESS_KEY_ID=AKIA...`
-- `AWS_SECRET_ACCESS_KEY=...`
-
-The existing server route uses `@aws-sdk/client-s3` and `@aws-sdk/s3-request-presigner` to generate signed PUT URLs. The API validates content-type and file size before generating the signed URL.
-
-### Azure Blob (alternate)
-
-- Create a Storage Account and a container named `uploads` (Private).
-- Use a short-lived SAS token scoped to the container with `Write` and `Create` permissions for uploads and `Read` for downloads.
-- Server should generate SAS URLs and return them to the client similarly to the AWS flow.
-
-### Environment variables (example `.env.local`)
-
-- `JWT_SECRET=your_jwt_secret`
-- `AWS_REGION=ap-south-1`
-- `AWS_BUCKET_NAME=kalvium-app-storage`
-- `AWS_ACCESS_KEY_ID=...`
-- `AWS_SECRET_ACCESS_KEY=...`
-
-### How to test the upload flow (client -> server -> S3)
-
-1. Start the app locally (in `ltr`):
-
-```bash
-cd ltr
-npm install
-npm run dev
+**Environment Variables:**
+```
+AWS_REGION=ap-south-1
+AWS_BUCKET_NAME=your-bucket-name
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
 ```
 
-2. Request a presigned URL from the server (example using `fetch`):
+**Security:** Private buckets, IAM roles, 60s URL expiry, lifecycle policies
 
-```js
-// POST /api/upload
-const body = { fileName: file.name, fileType: file.type, fileSize: file.size };
-const res = await fetch('/api/upload', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(body),
-});
-const { uploadUrl, fileKey, publicUrl } = await res.json();
-
-// Upload file directly to S3
-await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
-
-// After upload, object is available at `publicUrl` (if bucket policy allows) or via signed GET
-```
-
-The server route handled at [ltr/src/app/api/upload/route.ts](ltr/src/app/api/upload/route.ts#L1-L200) already performs file type and size validation and generates a safe `fileKey` under `uploads/{userId}/...`.
-
-### Client-side validation (example)
-
-```js
-if (!['image/png','image/jpeg'].includes(file.type)) {
-  throw new Error('Only PNG and JPEG allowed');
-}
-if (file.size > 2 * 1024 * 1024) {
-  throw new Error('File too large (max 2MB)');
-}
-```
-
-### Security & Lifecycle Recommendations
-
-- Keep buckets/containers private and only allow uploads via server-generated signed URLs or SAS tokens.
-- Use IAM roles (if running on AWS compute) or short-lived credentials instead of long-lived keys when possible.
-- Limit presigned URL expiry (the repository uses 60s by default); increase carefully when needed.
-- Apply lifecycle rules to move older files to cheaper storage classes or delete temporary files after 30 days.
-- Log and monitor object access using AWS CloudTrail / Azure Monitor.
-
-### Cost considerations
-
-- Object storage costs include storage GB/month, requests (PUT/GET), and data transfer. Use lifecycle policies for cost control and consider infrequent access tiers for rarely-read files.
-
-### Deliverables (what's included)
-
-- Created server presigned upload flow: [ltr/src/app/api/upload/route.ts](ltr/src/app/api/upload/route.ts#L1-L200) (AWS S3 presigned PUT)
-- Validation: server-side content-type and size checks are implemented in the route above.
-- Client upload pattern: demonstrated in this README (fetch POST to `/api/upload` then PUT to `uploadUrl`).
-- Recommendations for IAM/SAS, lifecycle, and security are documented here.
-
-### Screenshots
-
-Place screenshots showing a successful upload and S3/Blob dashboard under `ltr/screenshots/` (example filenames):
-
-- `ltr/screenshots/upload-success.png` — successful client upload flow
-- `ltr/screenshots/s3-object-list.png` — object visible in S3 console
+**Result:** Secure, scalable file storage without credential exposure
 
 ---
 
-If you'd like, I can add a small client component under `ltr/src/components` demonstrating file selection and upload, or commit a sample `.env.example` with the variables listed above. Which would you prefer?
+## UI Feedback Components (Toasts, Modals, Loaders)
 
-#### Running the Application
+**Components:**
+- **Toasts** - Auto-dismiss notifications with ARIA live regions (`ltr/src/components/ui/Toasts.tsx`)
+- **Modals** - Blocking confirmations with keyboard support (`ltr/src/components/ui/Modal.tsx`)
+- **Loaders** - Visual loading states for async operations (`ltr/src/components/ui/Loader.tsx`)
 
-1. **Start all services:**
-   ```bash
-   docker-compose up --build
-   ```
-   - `--build` flag rebuilds the Next.js image
-   - First run takes longer due to dependency installation and build process
-   - Remove `--build` on subsequent runs for faster startup
+**Accessibility:**
+- ARIA roles (`role="dialog"`, `role="status"`)
+- Keyboard navigation (Esc to close, focus trap)
+- Screen reader announcements
+- Color-coded feedback (success, error, info, warning)
 
-2. **Verify all containers are running:**
-   ```bash
-   docker ps
-   ```
-   Output should show three running containers:
-   - `nextjs_app`
-   - `postgres_db`
-   - `redis_cache`
-
-3. **Access the application:**
-   - **Next.js App**: http://localhost:3000
-   - **PostgreSQL**: `localhost:5432` (connect with credentials postgres:postgres)
-   - **Redis CLI**: `docker-compose exec redis redis-cli`
-
-#### Stopping the Application
-
-```bash
-docker-compose down
-```
-- Stops and removes containers
-
----
-
-## Feedback Layers (Toasts, Modals, Loaders)
-
-To improve user trust and clarity we added a small, accessible feedback system that demonstrates the key flows needed for the LocalPassengers product: instant confirmations, blocking confirmations, and process indicators.
-
-What was added
-- **Global Toasts**: lightweight notifications that auto-dismiss and are announced to screen readers (`role="status"` / `aria-live="polite"`). Implemented at `ltr/src/components/ui/Toasts.tsx` and mounted globally in the layout (`ltr/src/components/layout/LayoutWrapper.tsx`).
-- **Accessible Modal**: a dialog component with `role="dialog"`, `aria-modal="true"`, Esc-to-close and overlay click-to-close. File: `ltr/src/components/ui/Modal.tsx`.
-- **Loader / Spinner**: non-blocking visual loading state with `role="status"` used during async operations. File: `ltr/src/components/ui/Loader.tsx`.
-
-Where to see it
-- Feedback demo page: open `/context-demo/feedback-demo` in the running app to see the Toast → Modal → Loader → Toast flow.
-- Signup flow: ` /forms-demo/signup` now triggers toasts and shows a loader while submitting.
-
-Accessibility & UX principles followed
-- Non-intrusive: toasts do not block the UI and auto-dismiss after a short time.
-- Blocking confirmations: the modal receives keyboard interactions and can be dismissed with `Esc` or Cancel.
-- Clear semantics: all feedback elements include ARIA roles and `aria-live` where applicable so screen readers receive the messages.
-- Color & tone: success (green), error (red), info (blue), warning (yellow) — consistent across toasts and inline alerts.
-- Motion: subtle animations only — fast enough to be noticed, slow enough to not be distracting.
-
-Developer notes
-- The UI notification system is implemented using the existing `UIContext` (`ltr/src/context/UIContext.tsx`) which stores notifications and auto-removes them after 5 seconds. Use `addNotification(message, type)` where `type` is `info|success|warning|error`.
-- Example (any client component):
-
+**Usage:**
 ```tsx
-import { useUIContext } from "@/context/UIContext";
-
-const { addNotification } = useUIContext();
+import { useUI } from "@/hooks/useUI";
+const { addNotification } = useUI();
 addNotification("Saved successfully", "success");
 ```
 
-Deliverables checklist
-- At least one modal for blocking confirmation: `ltr/src/components/ui/Modal.tsx` and demo at `/context-demo/feedback-demo`.
-- At least one toast for instant feedback: `ltr/src/components/ui/Toasts.tsx` and wired into `UIContext`.
-- Loader integrated with async operations: `ltr/src/components/ui/Loader.tsx` used on signup and demo page.
-- Accessible markup: ARIA roles and keyboard handling present for toasts/modals/loaders.
-- README updated with explanation, trigger points, and a demo path.
+**Demo:** Visit `/context-demo/feedback-demo`
 
-Evidence
-- Run the app locally and visit `/context-demo/feedback-demo`. Use the **Start Flow** button to see the full sequence. Capture screenshots or a short recording to include here as proof (place images in `ltr/screenshots/` and update this README with the file paths).
-
-Reflection
-- Adding clear, accessible feedback drastically improves perceived reliability for commuters choosing alternate trains or deciding to wait. Toasts give quick reassurance, modals protect critical actions, and loaders set expectations during network delays — all crucial in time-sensitive commuter flows.
+**Result:** Clear, accessible user feedback improves trust and UX
 
 ---
 
 ## Loading Skeletons & Error Boundaries
 
-To improve resilience and user confidence during network delays we added route-level loading skeletons and error boundaries in the App Router.
+**Files:**
+- `loading.tsx` - Skeleton UI with `animate-pulse` during data fetch
+- `error.tsx` - Error fallback with retry button
 
-What was added
-- **Loading skeleton:** `ltr/src/app/context-demo/users/loading.tsx` — shows an `animate-pulse` skeleton while the server route is fetching data.
-- **Error boundary:** `ltr/src/app/context-demo/users/error.tsx` — client-side error fallback with a `Try Again` button that calls `reset()` to re-render the route.
-- **Server demo route:** `ltr/src/app/context-demo/users/page.tsx` — simulates a delayed fetch and supports `?error=1` to simulate failures.
+**Demo:** `/context-demo/users` (add `?error=1` to test error state)
 
-How to test locally
-1. Start the app:
+**Benefits:**
+- Reduces perceived latency
+- Graceful error handling
+- Actionable error recovery
 
-```bash
-cd ltr
-npm install
-npm run dev
-```
-
-2. Visit the demo route:
-
-- http://localhost:5174/context-demo/users — shows the skeleton while fetching simulated data.
-- http://localhost:5174/context-demo/users?error=1 — forces a simulated fetch error and triggers the error boundary UI.
-
-Capture screenshots of the loading skeleton, the error fallback, and a successful load to include as evidence in the repo (place under `ltr/screenshots/`).
-
-Design notes
-- Skeletons provide a layout preview and reduce perceived latency compared to generic spinners.
-- Error boundaries should display actionable next steps (retry, navigate back) and avoid exposing sensitive error details.
-
-Reflection
-- Adding predictable loading and error states increases user trust. For LocalPassengers, where commuters must make timely decisions, clear feedback during network delays prevents confusion and improves decision quality.
+**Result:** Better UX during network delays and failures
 
 
 
 ---
 
-## Transactional Email Integration (SES / SendGrid)
+## Transactional Email (AWS SES / SendGrid)
 
-Transactional emails are essential for LocalPassengers to keep commuters informed about saved trains, delays, platform changes, reroutes, and security alerts.
+**Purpose:** Automated emails for train alerts, password resets, account notifications
 
-### Why Transactional Emails Matter
+**Providers:** AWS SES (pay-per-email) or SendGrid (100 free/day)
 
-- **Critical updates:** notify users about delays or alternate routes.
-- **Security:** password resets and account alerts.
-- **Trust:** confirmation emails (signup, bookings) improve user confidence.
+**Implementation:** [ltr/src/app/api/email/route.ts](ltr/src/app/api/email/route.ts)
 
-### Choosing a Provider
-
-Feature | AWS SES | SendGrid
-:---|:---:|:---:
-Pricing | Pay-per-email | Free tier (100/day) + paid plans
-Setup | Domain/email verification, IAM | API key, sender verification
-Best for | Backend automation, tight AWS integration | Rapid development, easy API
+**Features:**
+- HTML email templates
+- Rate limiting & error handling
+- Async sending for performance
 
 ### Environment Variables
 
@@ -4766,3 +4388,65 @@ psql "host=servername.postgres.database.azure.com port=5432 dbname=localpassenge
 **Supported Platforms:** AWS RDS PostgreSQL, Azure Database for PostgreSQL, Docker (Local)
 
 ---
+
+## GitHub Actions CI/CD Pipeline
+
+We've implemented an automated CI/CD pipeline using **GitHub Actions** that runs on every push and pull request to ensure code quality and automate deployments.
+
+**Pipeline File:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+
+### Pipeline Stages
+
+Our pipeline consists of **6 sequential stages**:
+
+| Stage | Purpose | Key Actions |
+|-------|---------|-------------|
+| **1. Lint** | Code quality checks | ESLint, Prisma schema validation, TypeScript checks |
+| **2. Test** | Automated testing | Jest tests with PostgreSQL & Redis service containers, coverage reports |
+| **3. Build** | Production build | Next.js build verification, artifact upload |
+| **4. Deploy** | Production deployment | Automated deployment to AWS/Azure (main branch only) |
+| **5. Docker** | Container build | Docker image build and test (main branch only) |
+| **6. Security** | Vulnerability scan | npm audit, security report generation |
+
+### Key Features
+
+- **Service Containers:** PostgreSQL 16 and Redis 7 run during tests to mirror production
+- **Dependency Caching:** npm cache reduces install time from ~2 min to ~30 sec
+- **Concurrency Control:** Auto-cancels outdated runs when new commits are pushed
+- **Artifacts:** Coverage reports, build files, and security audits uploaded for review
+- **Secrets Management:** AWS/Azure credentials stored securely in GitHub Secrets
+
+### Workflow Triggers
+
+- Push to `main`, `develop`, or `master` branches
+- Pull requests targeting these branches
+- Manual workflow dispatch
+
+### Viewing Results
+
+Go to **GitHub Repository → Actions tab** to view:
+- ✅ All pipeline stages and their status
+- 📊 Test coverage reports (retained 7 days)
+- 🏗️ Build artifacts (retained 3 days)
+- 🔒 Security audit reports (retained 30 days)
+
+### Required GitHub Secrets
+
+To enable deployment, add these secrets in **Settings → Secrets and Variables → Actions**:
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (for AWS deployment)
+- `AZURE_WEBAPP_PUBLISH_PROFILE` (for Azure deployment)
+- `DOCKER_USERNAME`, `DOCKER_PASSWORD` (for Docker Hub)
+
+### Reflections
+
+**What worked well:**
+- Service containers accurately replicate production environment during tests
+- Strict linting (`--max-warnings=0`) prevents technical debt accumulation
+- Build caching significantly speeds up pipeline execution (~60% faster)
+
+**Challenges:**
+- Initial test failures due to missing environment variables in CI
+- Prisma client generation needed in each stage (not cached between jobs)
+- Docker build context required correct working directory configuration
+
+**Future improvements:** E2E testing with Playwright, Lighthouse CI for performance tracking, automated preview deployments for PRs
