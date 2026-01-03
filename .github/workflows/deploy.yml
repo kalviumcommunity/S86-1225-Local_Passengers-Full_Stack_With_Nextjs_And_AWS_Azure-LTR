@@ -1,0 +1,54 @@
+name: Deploy with Verification and Rollback
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: ltr
+        run: npm ci
+
+      - name: Build app
+        working-directory: ltr
+        run: npm run build
+
+      - name: Start app (background)
+        working-directory: ltr
+        run: |
+          PORT=5174 npm run start &
+          # wait for the server to become available
+          for i in {1..30}; do
+            curl -sSf http://localhost:5174/api/health && break || sleep 1
+          done
+
+      - name: Verify Deployment
+        id: verify
+        run: |
+          echo "Running deployment verification..."
+          curl -f http://localhost:5174/api/health
+
+      - name: Run Smoke Tests
+        run: |
+          echo "Running smoke tests against deployed app..."
+          DEPLOY_URL=http://localhost:5174 npx jest --testPathPattern=__smoke_tests__ --runInBand
+        working-directory: ltr
+
+      - name: Rollback Deployment (simulated)
+        if: failure()
+        run: |
+          echo "Verification failed — rolling back to previous version (simulated)."
+          # Example rollback command (uncomment and adapt to real infra):
+          # aws ecs update-service --cluster myCluster --service myService --force-new-deployment --rollback
+          exit 1
