@@ -1,3 +1,83 @@
+# Local Passengers — Deployment Verification & Rollback Guide
+
+This repository contains a Next.js app (in the `ltr` folder). This document explains the deployment verification, smoke tests, rollback simulation, and metrics reflection required by the assignment.
+
+**Health check endpoint**
+- Path: `/api/health` (app router)
+- File: `ltr/src/app/api/health/route.ts`
+- Behavior: Returns HTTP 200 and JSON `{ success: true, status: 'ok', uptime, timestamp }` when healthy.
+- Simulation: Set environment variable `FORCE_HEALTH_FAIL=1` to make the route return HTTP 500 for testing rollback flows.
+
+Example response (healthy):
+
+```
+{ "success": true, "status": "ok", "uptime": 123.45, "timestamp": "2026-01-03T...Z" }
+```
+
+**Smoke tests**
+- Location: `ltr/__smoke_tests__/health.test.ts`
+- How they run: The test uses `DEPLOY_URL` environment variable (defaults to `http://localhost:5174`).
+- Command (from `ltr`):
+
+```bash
+npx jest --testPathPattern=__smoke_tests__ --runInBand
+```
+
+**CI/CD workflow (verification + rollback)**
+- File: `.github/workflows/deploy.yml`
+- Overview: On push to `main`/`master` it builds the app, starts it on port `5174`, runs a health verification via `curl /api/health`, then runs smoke tests. If verification or tests fail, a rollback step runs (simulated).
+- Notes: The rollback step is a placeholder — replace the simulated commands with your real infra commands (ECS, Azure App Service, Kubernetes, etc.).
+
+Example rollback command (ECS):
+
+```
+aws ecs update-service --cluster myCluster --service myService --force-new-deployment --rollback
+```
+
+**How to simulate a failure and test rollback locally**
+1. Build and start the app locally in production mode:
+
+```bash
+cd ltr
+npm ci
+npm run build
+FORCE_HEALTH_FAIL=1 PORT=5174 npm run start
+```
+
+2. Verify health endpoint returns 500:
+
+```bash
+curl -v http://localhost:5174/api/health
+```
+
+3. Run smoke tests against this URL (they should fail and demonstrate the verification failure):
+
+```bash
+DEPLOY_URL=http://localhost:5174 npx jest --testPathPattern=__smoke_tests__ --runInBand
+```
+
+**Metrics & Reflection**
+- MTTD (Mean Time To Detect): A health check endpoint + CI verification reduces MTTD by enabling automated detection. Target: < 5 mins (monitoring + alerting required).
+- MTTR (Mean Time To Recover): Automated rollback scripts and tested deployment paths reduce MTTR. Target: < 30 mins (practice rollback procedures).
+- Change Failure Rate (CFR): With verification and canary/blue-green strategies, aim for CFR < 15%.
+
+**Rollback strategies considered**
+- Revert to previous artifact: keep previous Docker image or build artifact and redeploy.
+- Blue-Green: provision `blue` (current) and `green` (new) environments and cutover after verification.
+- Canary: gradually route a small % of traffic to the new release while monitoring.
+
+Use the method that best matches your infra and cost tolerance; the included GitHub Actions workflow demonstrates verification and a simulated rollback step.
+
+**Deliverables in this repo**
+- `ltr/src/app/api/health/route.ts` — Health route with failure simulation.
+- `ltr/__smoke_tests__/health.test.ts` — Basic smoke test.
+- `.github/workflows/deploy.yml` — CI workflow that verifies and simulates rollback.
+- This `README.md` — documentation, simulation steps, and metrics reflection.
+
+**Screenshots**
+- Add screenshots of: failing verification step, rollback log, and healthy redeployment confirmation. Place images under `ltr/screenshots/` and reference them here when available.
+
+If you want, I can run the smoke tests locally, simulate a failing health check, or adapt the workflow to your real deployment (ECS/AKS/App Service). Which would you like next?
 # LocalPassengers - Real-Time Train Delay & Reroute System
 
 ## Screenshot
