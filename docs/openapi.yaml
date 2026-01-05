@@ -1,0 +1,213 @@
+openapi: 3.0.0
+info:
+  title: LocalPassengers API
+  version: "1.0.0"
+  description: |
+    API for real-time local train alerts, delays, and reroute suggestions for commuters.
+    This spec covers core endpoints for auth, users, trains, alerts, and reroutes.
+  contact:
+    name: LocalPassengers team
+    url: https://example.org
+    email: support@example.org
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://api.example.com
+    description: Production server (replace with actual URL)
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: "Bad request"
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+    Train:
+      type: object
+      properties:
+        trainId:
+          type: string
+        name:
+          type: string
+        currentStation:
+          type: string
+        expectedArrival:
+          type: string
+          format: date-time
+        delayMinutes:
+          type: integer
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+        trainId:
+          type: string
+        message:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    RerouteRequest:
+      type: object
+      properties:
+        fromStation:
+          type: string
+        toStation:
+          type: string
+        time:
+          type: string
+          format: date-time
+
+paths:
+  /api/auth/login:
+    post:
+      summary: Login and receive JWT token
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/users:
+    get:
+      summary: Retrieve all users
+      tags: [Users]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /api/trains:
+    get:
+      summary: Retrieve trains (optionally filter by station)
+      tags: [Trains]
+      parameters:
+        - in: query
+          name: station
+          schema:
+            type: string
+          description: Station code or name to filter trains
+      responses:
+        '200':
+          description: Train list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Train'
+
+  /api/alerts:
+    post:
+      summary: Create a new alert for a train
+      tags: [Alerts]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trainId:
+                  type: string
+                message:
+                  type: string
+      responses:
+        '201':
+          description: Alert created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+
+  /api/reroutes:
+    post:
+      summary: Request reroute suggestions
+      tags: [Reroutes]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RerouteRequest'
+      responses:
+        '200':
+          description: Reroute suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        route:
+                          type: string
+                        eta:
+                          type: string
+                          format: date-time
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Trains
+  - name: Alerts
+  - name: Reroutes
+
+x-last-updated: 2026-01-05

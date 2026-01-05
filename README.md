@@ -1,3 +1,91 @@
+# LocalPassengers — Real-time Local Train Alerts
+
+This repository contains a full-stack application (Next.js + API) designed to provide real-time updates, alerts, and reroutes for local train commuters in India.
+**Version:** 1.0.0  
+**Docs Updated:** 2026-01-05
+
+**What this repo contains:**
+- Frontend: Next.js (in `ltr/`)
+- API: Next.js API routes (inside `ltr/src/app/api/`)
+- DB: Prisma schema in `ltr/prisma/`
+
+**Deliverables added:**
+- API spec: [docs/openapi.yaml](docs/openapi.yaml)
+
+**How this helps commuters**
+The system aggregates live train positions, delay information, alerts, and alternate-reroute suggestions so commuters can make informed, real-time decisions at stations or en route.
+
+**Quick links:**
+- API spec: [docs/openapi.yaml](docs/openapi.yaml)
+
+**Usage — viewing API docs locally (Swagger UI)**
+
+Option A — Serve locally using `swagger-ui` tools:
+
+1. From project root, install locally (if you want a small static UI):
+
+```bash
+cd ltr
+npm install --save-dev swagger-ui-dist
+
+2. Or integrate `swagger-ui-express` + `swagger-jsdoc` into the app server (example below). Ask me and I can add a `ltr/src/swagger.ts` API route that serves `/api-docs`.
+
+Option B — Open the spec directly in an online Swagger viewer:
+
+- Upload [docs/openapi.yaml](docs/openapi.yaml) to https://editor.swagger.io/ to view an interactive UI.
+
+**Architecture**
+
+**System Overview**
+- Tech stack: Next.js, Node.js, Prisma (Postgres), Redis (cache), S3-compatible object storage, CI/CD pipelines for deployment (ECS/Azure App Service/Runnable K8s)
+- Core modules: Frontend (Next.js), API (Next.js API routes), Database (Postgres via Prisma), Caching/Realtime (Redis / WebSockets), External integrations (rail-data feeds, SMS / email providers)
+
+**Directory structure (high-level)**
+
+```
+ltr/
+ ┣ src/
+ ┃ ┣ app/
+ ┃ ┣ components/
+ ┃ ┣ lib/            # db, auth, logger, rbac helpers
+ ┃ ┗ prisma/
+ ┣ prisma/
+ ┗ package.json
+```
+
+**Data Flow (simplified)**
+
+User -> Next.js frontend -> Next.js API route -> Service layer (caching + DB) -> External feeds -> Response
+
+Examples:
+- Real-time feed ingestion: external train-feed -> background worker -> Redis + DB
+- Client fetch: Next.js API -> Redis (fast), fallback to DB
+
+**Deployment architecture (summary)**
+- App: Containerized Next.js app deployed to cloud (ECS / Azure App Service / Vercel)
+- Database: Managed Postgres (RDS / Azure Database)
+- Caching: Redis (ElastiCache / Azure Cache)
+- Storage: S3 (or Azure Blob)
+- CI/CD: GitHub Actions (or other) to build, test, and deploy. Add a step to publish updated API docs artifact.
+
+**Onboarding & Maintenance**
+- Local setup: `cd ltr && npm install && cp .env.example .env && npx prisma migrate dev`
+- Adding routes: Update API route file under `ltr/src/app/api/`, add JSDoc or OpenAPI entry in `docs/openapi.yaml`, and include in PR checklist.
+- Regenerating docs: Update `docs/openapi.yaml` or add JSDoc comments; CI can optionally validate/convert and publish docs to a docs site.
+
+**Docs Versioning**
+- Keep `info.version` and `info.description` in `docs/openapi.yaml` updated with each release.
+
+**Changelog (example)**
+
+## [v1.0.0] - 2026-01-05
+- Initial API spec and architecture README
+
+**Next steps (I can do for you)**
+- Add a `/api-docs` Swagger UI endpoint inside the `ltr` app (using `swagger-ui-express` or a Next.js API route).  
+- Export a Postman collection from the OpenAPI spec and place it in `docs/postman_collection.json`.
+
+If you want either, tell me which option you prefer and I'll add the implementation.
 # Local Passengers — Deployment Verification & Rollback Guide
 
 This repository contains a Next.js app (in the `ltr` folder). This document explains the deployment verification, smoke tests, rollback simulation, and metrics reflection required by the assignment.
